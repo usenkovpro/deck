@@ -42,6 +42,28 @@
   background: var(--surface-2);
 }
 
+/* Time-travel preview. Deliberately loud: this must never be mistaken for the real
+   app showing the real time. */
+.preview-flag {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-sm);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bad);
+}
+
+.preview-flag a {
+  margin-left: auto;
+  color: inherit;
+}
+
 .nav {
   position: fixed;
   inset: auto 0 0 0;

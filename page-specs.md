@@ -108,6 +108,17 @@ The hub, not the editor.
 
 ---
 
+## Preview mode
+
+`?at=2026-09-11T12:00` makes the app run from a pretend moment, so any state can be
+checked without waiting for the school day to reach it. Time then runs forward
+normally from there, so countdowns still tick.
+
+Whenever it is on, **every page shows a red `PREVIEW — NOT THE REAL TIME` bar with an
+Exit link.** A preview that looks identical to the real app will eventually be
+mistaken for it, and telling someone the wrong lesson is happening is the worst thing
+Deck can do.
+
 ## Rules that apply to every page
 
 - Works at 375px with no horizontal scroll.

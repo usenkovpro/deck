@@ -6,6 +6,25 @@
  * for the school day to reach it. The header reads from here too, so the clock on
  * screen never disagrees with the countdown underneath it.
  */
+/** The `?at` value, if it is a time we can actually use. */
+function pretendStart(): Date | null {
+  const at = new URLSearchParams(location.search).get("at");
+  if (!at) return null;
+  const pretend = new Date(at);
+  return Number.isNaN(pretend.getTime()) ? null : pretend;
+}
+
+/**
+ * Whether the app is showing a pretend time rather than the real one.
+ *
+ * This has to be visible on screen. A preview that looks exactly like the real app
+ * will eventually be mistaken for it, and being told the wrong lesson is happening
+ * is the single worst thing Deck can do.
+ */
+export function isPreview(): boolean {
+  return pretendStart() !== null;
+}
+
 /** Milliseconds between the pretend time and the real one. Zero unless `?at` is set. */
 let offset: number | null = null;
 
@@ -13,10 +32,8 @@ export function currentTime(): Date {
   const real = Date.now();
 
   if (offset === null) {
-    const at = new URLSearchParams(location.search).get("at");
-    const pretend = at ? new Date(at) : null;
-    offset =
-      pretend && !Number.isNaN(pretend.getTime()) ? pretend.getTime() - real : 0;
+    const pretend = pretendStart();
+    offset = pretend ? pretend.getTime() - real : 0;
   }
 
   // The offset is fixed once and then added to the real clock, so a previewed moment

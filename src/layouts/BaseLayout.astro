@@ -42,6 +42,7 @@ const base = import.meta.env.BASE_URL;
       </header>
 
       <main>
+        <div id="preview-flag"></div>
         <slot />
       </main>
     </div>
@@ -61,7 +62,7 @@ const base = import.meta.env.BASE_URL;
 
     <script>
       import { clockTime, shortDate } from "../lib/format";
-      import { currentTime } from "../lib/now";
+      import { currentTime, isPreview } from "../lib/now";
 
       // The date and clock are filled in on the device. Baking them in at build time
       // would show whenever the site was last deployed, which could be months ago.
@@ -73,6 +74,17 @@ const base = import.meta.env.BASE_URL;
         };
         paint();
         setInterval(paint, 1000);
+      }
+
+      // Say so, loudly, when the clock is a pretend one.
+      const flag = document.getElementById("preview-flag");
+      if (flag && isPreview()) {
+        flag.className = "preview-flag";
+        flag.append(document.createTextNode("Preview — not the real time"));
+        const exit = document.createElement("a");
+        exit.href = location.pathname;
+        exit.textContent = "Exit";
+        flag.append(exit);
       }
     </script>
   </body>
