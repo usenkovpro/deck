@@ -25,13 +25,28 @@ export function shortDate(date: Date): string {
   });
 }
 
-/** "23 min left", "1 hr 5 min left". Minutes only below an hour — it reads faster. */
-export function countdown(minutes: number): string {
-  if (minutes <= 0) return "ending now";
-  if (minutes < 60) return `${minutes} min left`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m === 0 ? `${h} hr left` : `${h} hr ${m} min left`;
+/** "19:20" — the clock, 24-hour to match how the timetable is printed. */
+export function clockTime(date: Date): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * A real ticking countdown: "37:24", or "1:05:30" once there is an hour to go.
+ *
+ * Seconds are shown rather than whole minutes because this is the number you watch
+ * when you want the lesson to end — "38 min left" sitting still for a minute at a
+ * time does not feel like a timer.
+ */
+export function timerText(seconds: number): string {
+  if (seconds <= 0) return "0:00";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
 /** How a future lesson is introduced: "at 09:55", "tomorrow 07:50", "Mon 07:50". */

@@ -108,16 +108,9 @@
 
 .now-foot {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--s-3);
   margin-top: var(--s-4);
-}
-
-.now-foot .now-left {
-  margin-left: auto;
-  font-size: var(--t-sm);
-  font-weight: 600;
-  color: var(--accent);
 }
 
 .now-times {
@@ -125,20 +118,47 @@
   color: var(--text-3);
 }
 
-.progress {
-  height: 4px;
-  margin-top: var(--s-3);
-  border-radius: 999px;
-  background: var(--surface-2);
-  overflow: hidden;
+/* The dial: a small clock face showing how much of the period is left, with the
+   countdown in the middle. */
+.dial {
+  position: relative;
+  flex: none;
+  width: 76px;
+  height: 76px;
+  margin-left: auto;
 }
 
-.progress > span {
+.dial svg {
   display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-  transition: width 0.3s linear;
+}
+
+.dial-track {
+  stroke: var(--surface-2);
+}
+
+.dial-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  /* Start the sweep at twelve o'clock rather than three. */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 0.3s linear;
+}
+
+.dial-tick {
+  stroke: var(--text-3);
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+
+.dial-value {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 /* --- Period rows ----------------------------------------------------------- */
@@ -273,6 +293,137 @@
   margin-top: var(--s-4);
   font-size: var(--t-sm);
   color: var(--text-3);
+}
+
+/* --- Editor ---------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+}
+
+.tabs button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.tabs button[aria-pressed="true"] {
+  background: var(--surface-2);
+  border-color: var(--text-3);
+  color: var(--text-1);
+}
+
+/* Rows are laid out with a gap rather than sibling margins, because the list mixes
+   tappable rows with plain dividers. */
+.edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+button.row {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.row:active {
+  background: var(--surface-2);
+}
+
+.row.is-empty .row-subject {
+  color: var(--text-3);
+}
+
+.row-chevron {
+  flex: none;
+  color: var(--text-3);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  padding: var(--s-2) var(--s-4);
+  border-radius: 999px;
+  background: var(--text-1);
+  color: var(--bg);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+/* --- Dialogs --------------------------------------------------------------- */
+
+dialog {
+  width: calc(100% - 2 * var(--s-4));
+  max-width: 400px;
+  padding: var(--s-5) var(--s-4) var(--s-4);
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text-1);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+dialog h2 {
+  font-size: var(--t-lg);
+}
+
+.field {
+  display: block;
+  margin-top: var(--s-3);
+}
+
+.field > .label {
+  display: block;
+  margin-bottom: var(--s-1);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--text-1);
+  font: inherit;
+}
+
+/* Save sits on the right, but comes first in the DOM so that pressing Enter in a
+   field submits the form rather than cancelling it. */
+.dialog-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+}
+
+.dialog-actions .btn {
+  flex: 1;
+}
+
+.dialog-destroy {
+  width: 100%;
+  margin-top: var(--s-2);
 }
 
 /* --- Empty states, buttons, forms ------------------------------------------ */

@@ -28,12 +28,20 @@ export function minutesInto(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
 
+/** Seconds since midnight — the countdown needs finer resolution than minutes. */
+export function secondsInto(date: Date): number {
+  return minutesInto(date) * 60 + date.getSeconds();
+}
+
 /**
  * Every row for one day, in time order.
  *
  * Trailing breaks and lunches are dropped: Friday's lessons stop at 11:45, so
  * showing "Lunch 12:40" after them would be wrong — that lunch belongs to a school
  * day that has already ended.
+ *
+ * Leading ones are kept, though. Registration happens before the first lesson and is
+ * still very much part of being at school on time.
  */
 export function entriesFor(tt: Timetable, day: DayKey): Entry[] {
   const lessons = tt.days[day] ?? [];
@@ -55,8 +63,17 @@ export function entriesFor(tt: Timetable, day: DayKey): Entry[] {
 
   const lastLesson = entries.findLastIndex((e) => e.kind === "lesson");
   if (lastLesson === -1) return [];
-  const firstLesson = entries.findIndex((e) => e.kind === "lesson");
-  return entries.slice(firstLesson, lastLesson + 1);
+
+  // Keep named periods that run straight on from the last lesson — an end-of-day
+  // form time at 15:10 is part of the day. Drop ones separated by a gap: Friday's
+  // lessons stop at 11:45, so the 12:40 lunch belongs to a day that isn't happening.
+  let end = lastLesson;
+  for (let i = lastLesson + 1; i < entries.length; i++) {
+    const named = entries[i].kind === "break" || entries[i].kind === "lunch";
+    if (!named || entries[i].startMin !== entries[i - 1].endMin) break;
+    end = i;
+  }
+  return entries.slice(0, end + 1);
 }
 
 export interface NextUp {
@@ -87,6 +104,8 @@ export interface Snapshot {
   next: NextUp | null;
   /** Periods still to come today, not including `current`. */
   remaining: Entry[];
+  /** The first period of today, which may be registration rather than a lesson. */
+  dayStart: Entry | null;
 }
 
 /** What is happening at `now`, and what happens after it. */
@@ -110,17 +129,23 @@ export function snapshot(tt: Timetable, now: Date): Snapshot {
     state = "after-school";
   }
 
-  // Mid-lesson we count down to the end of it; otherwise to the start of the next.
+  const dayStart = today[0] ?? null;
+
+  // Mid-lesson we count down to the end of it; otherwise to whatever is next. Before
+  // school that is the start of the day, not the first lesson — if registration is
+  // at 07:45 then 07:45 is the time you have to be there, not 07:50.
   let minutesLeft: number | null = null;
   let progress: number | null = null;
   if (current) {
     minutesLeft = current.endMin - mins;
     progress = (mins - current.startMin) / (current.endMin - current.startMin);
+  } else if (state === "before-school" && dayStart) {
+    minutesLeft = dayStart.startMin - mins;
   } else if (next && next.daysAhead === 0) {
     minutesLeft = next.entry.startMin - mins;
   }
 
-  return { day, state, current, minutesLeft, progress, next, remaining };
+  return { day, state, current, minutesLeft, progress, next, remaining, dayStart };
 }
 
 /** The next actual lesson — skipping breaks, free periods, weekends and holidays. */

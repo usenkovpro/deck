@@ -6,8 +6,8 @@
  * code the page runs.
  */
 
-import { detailLine } from "./format";
-import type { Entry } from "./types";
+import { detailLine, longDay } from "./format";
+import { SCHOOL_DAYS, type DayKey, type Entry } from "./types";
 
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -60,6 +60,34 @@ export function entryRow(entry: Entry, colours: Map<string, string>): HTMLElemen
   return entry.kind === "break" || entry.kind === "lunch"
     ? dividerRow(entry)
     : periodRow(entry, colours);
+}
+
+/**
+ * The Mon–Fri day selector, shared by Week and Edit.
+ *
+ * The visible label is three letters, so the accessible name spells the day out —
+ * and today is marked with a dot rather than a `title`, which would replace that
+ * name instead of adding to it.
+ */
+export function dayBar(
+  selected: DayKey,
+  today: DayKey | null,
+  onPick: (day: DayKey) => void,
+): HTMLElement {
+  const bar = el("div", "daybar");
+  for (const day of SCHOOL_DAYS) {
+    const button = el("button", undefined, day.toUpperCase());
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(day === selected));
+    button.setAttribute(
+      "aria-label",
+      day === today ? `${longDay(day)}, today` : longDay(day),
+    );
+    if (day === today) button.classList.add("is-today");
+    button.addEventListener("click", () => onPick(day));
+    bar.append(button);
+  }
+  return bar;
 }
 
 /** The designed no-timetable screen. Never leave a page blank. */

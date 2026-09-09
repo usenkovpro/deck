@@ -32,20 +32,25 @@ const example = JSON.stringify(
 
   <div id="current"></div>
 
-  <div class="section">
-    <label class="label" for="json">Paste timetable JSON</label>
+  <div class="btn-row">
+    <a class="btn" href={`${base}edit`} id="edit-link">Edit timetable</a>
+  </div>
+
+  <div id="message" hidden></div>
+
+  <details class="section">
+    <summary>Import or export as JSON</summary>
+    <p>
+      For moving your timetable to another phone, or keeping a backup. Editing by
+      hand is easier on the <a href={`${base}edit`}>edit screen</a>.
+    </p>
+    <label class="label" for="json">Timetable JSON</label>
     <textarea id="json" spellcheck="false" autocapitalize="off" autocorrect="off"
-      placeholder="Paste your timetable here"></textarea>
+      placeholder="Paste a timetable here"></textarea>
     <div class="btn-row">
       <button class="btn" id="import" type="button">Import</button>
       <button class="btn secondary" id="export" type="button">Export current</button>
-      <button class="btn danger" id="clear" type="button">Delete</button>
     </div>
-    <div id="message" hidden></div>
-  </div>
-
-  <details>
-    <summary>What the JSON should look like</summary>
     <p>
       <code>slots</code> are the period times, shared by every day. <code>days</code>
       says which subject sits in which period. A period with no lesson shows as free,
@@ -53,6 +58,13 @@ const example = JSON.stringify(
     </p>
     <pre>{example}</pre>
   </details>
+
+  <div class="section">
+    <span class="label">Danger zone</span>
+    <div class="btn-row">
+      <button class="btn danger" id="clear" type="button">Delete my timetable</button>
+    </div>
+  </div>
 
   <p class="section note">
     <a href={base}>Back to today</a>
@@ -76,6 +88,9 @@ const example = JSON.stringify(
   const importBtn = document.getElementById("import") as HTMLButtonElement;
   const exportBtn = document.getElementById("export") as HTMLButtonElement;
   const clearBtn = document.getElementById("clear") as HTMLButtonElement;
+  const editLink = document.getElementById("edit-link") as HTMLAnchorElement;
+
+  const DELETE_LABEL = "Delete my timetable";
 
   function say(text: string, isError = false): void {
     message.hidden = false;
@@ -100,10 +115,12 @@ const example = JSON.stringify(
       current.replaceChildren(
         el("p", "note", "Nothing saved on this device yet."),
       );
+      editLink.textContent = "Create my timetable";
       exportBtn.disabled = true;
       clearBtn.disabled = true;
       return;
     }
+    editLink.textContent = "Edit timetable";
     const box = el("div", "message");
     box.append(el("strong", undefined, "Saved: "));
     box.append(document.createTextNode(describe(tt)));
@@ -156,13 +173,13 @@ const example = JSON.stringify(
       clearBtn.textContent = "Tap again to delete";
       setTimeout(() => {
         armed = false;
-        clearBtn.textContent = "Delete";
+        clearBtn.textContent = DELETE_LABEL;
       }, 4000);
       return;
     }
     clearTimetable();
     armed = false;
-    clearBtn.textContent = "Delete";
+    clearBtn.textContent = DELETE_LABEL;
     paintCurrent();
     say("Deleted from this device.");
   });

@@ -79,6 +79,6 @@ Page gutter is `--s-4` (16px). Rows are 56px minimum so they're comfortable to t
   480px column — this is a phone app, not a responsive website.
 - **Tap targets are 44px minimum.**
 - **No emoji, no icon font.** Any icon is inline SVG using `currentColor`.
-- **Nothing animates except the progress bar and page transitions.** No bounce.
+- **Nothing animates except the countdown dial and page transitions.** No bounce.
 - **It must render with no timetable saved.** The empty state is a designed screen,
   not an accident.

@@ -40,6 +40,8 @@ Today screen:
 http://localhost:4321/?at=2026-09-11T12:00
 ```
 
+Time then runs forward normally from there, so the countdown still ticks.
+
 ## Adding your timetable
 
 Open **Setup** and paste JSON in this shape:

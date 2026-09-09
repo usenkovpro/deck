@@ -44,7 +44,9 @@ src/lib/render.ts        Building the period rows shared by Today and Week
 src/layouts/BaseLayout.astro
 src/pages/index.astro    Today
 src/pages/week.astro     Week
-src/pages/setup.astro    Import / export / delete
+src/pages/edit.astro     Tap-to-edit builder: lessons and period times
+src/pages/setup.astro    Summary, import / export, delete
+src/lib/edit.ts          Timetable mutations — each returns a new timetable
 src/styles/global.css    All custom properties live here
 src/styles/components.css  Shared component styles (global, because rows are built in JS)
 ```
@@ -69,6 +71,8 @@ there.
 ## Phases
 
 1. **Timetable** — Today and Week screens, import via JSON. *(done)*
+1b. **Tap-to-edit builder** — build and change a timetable without touching JSON.
+    *(done)*
 2. **Homework** — add homework against a subject with a due date, sorted by soonest.
 3. **Install on the phone** — PWA, offline, home screen icon.
 4. **Revision** — flashcards with spaced repetition.

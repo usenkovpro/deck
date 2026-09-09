@@ -20,29 +20,16 @@ const base = import.meta.env.BASE_URL;
 
 <script>
   import { loadTimetable } from "../lib/storage";
-  import { snapshot } from "../lib/schedule";
+  import { snapshot, secondsInto } from "../lib/schedule";
+  import { currentTime } from "../lib/now";
   import { subjectColours } from "../lib/subjects";
-  import { countdown, longDay, whenLabel } from "../lib/format";
+  import { timerText, longDay, whenLabel } from "../lib/format";
   import { el, entryRow, periodRow, emptyState } from "../lib/render";
   import type { Snapshot } from "../lib/schedule";
   import type { Timetable } from "../lib/types";
 
   const base: string = (window as any).__DECK_BASE__ ?? "/";
   const app = document.getElementById("app")!;
-
-  /**
-   * Normally just "now" — but `?at=2026-09-09T09:00` pretends it is another moment,
-   * so every state (mid-lesson, break, weekend) can be checked without waiting for
-   * the school day to reach it.
-   */
-  function currentTime(): Date {
-    const at = new URLSearchParams(location.search).get("at");
-    if (at) {
-      const pretend = new Date(at);
-      if (!Number.isNaN(pretend.getTime())) return pretend;
-    }
-    return new Date();
-  }
 
   /** The headline of the now card, which changes completely with the state. */
   function nowCardText(snap: Snapshot): {
@@ -63,24 +50,34 @@ const base = import.meta.env.BASE_URL;
         };
       }
       case "break":
-      case "lunch":
+      case "lunch": {
+        // A non-teaching period can be named — registration, form time, assembly.
+        // Whatever it is called is what should be on screen.
+        const named = snap.current!.slot.label;
         return {
-          label: snap.current!.slot.label ?? snap.state,
-          hero: snap.state === "lunch" ? "Lunch" : "Break",
+          label: named ?? snap.state,
+          hero: named ?? (snap.state === "lunch" ? "Lunch" : "Break"),
           detail: nextName ? `Then ${nextName}` : "",
         };
+      }
       case "free":
         return {
           label: "Free",
           hero: "Free period",
           detail: nextName ? `Then ${nextName}` : "",
         };
-      case "before-school":
+      case "before-school": {
+        // Count down to the start of the day, which may be registration rather than
+        // the first lesson — that is the time you actually have to be there.
+        const first = snap.dayStart;
+        const firstName =
+          first?.lesson?.subject ?? first?.slot.label ?? nextName ?? "";
         return {
           label: "School starts",
-          hero: next ? next.entry.slot.start : "",
-          detail: nextName ? `First up: ${nextName}` : "",
+          hero: first ? first.slot.start : "",
+          detail: firstName ? `First up: ${firstName}` : "",
         };
+      }
       case "after-school":
         return {
           label: "School's done",
@@ -109,31 +106,89 @@ const base = import.meta.env.BASE_URL;
     card.append(el("h2", "now-subject", hero));
     if (detail) card.append(el("p", "now-detail", detail));
 
-    if (snap.progress !== null) {
-      const bar = el("div", "progress");
-      const fill = el("span");
-      // Clamp so a clock that is slightly out never overflows the track.
-      fill.style.width = `${Math.min(100, Math.max(0, snap.progress * 100))}%`;
-      bar.append(fill);
-      card.append(bar);
-    }
-
     const foot = el("div", "now-foot");
     if (snap.current) {
       foot.append(
         el("span", "now-times tnum", `${snap.current.slot.start}–${snap.current.slot.end}`),
       );
     }
-    if (snap.minutesLeft !== null) {
-      const text =
-        snap.current !== null
-          ? countdown(snap.minutesLeft)
-          : `in ${snap.minutesLeft} min`;
-      foot.append(el("span", "now-left tnum", text));
-    }
+    if (snap.minutesLeft !== null) foot.append(dial());
     if (foot.childElementCount > 0) card.append(foot);
 
     return card;
+  }
+
+  const DIAL_RADIUS = 32;
+  const DIAL_CIRCUMFERENCE = 2 * Math.PI * DIAL_RADIUS;
+
+  const SVG = "http://www.w3.org/2000/svg";
+
+  function svgEl<K extends keyof SVGElementTagNameMap>(
+    tag: K,
+    attrs: Record<string, string | number>,
+  ): SVGElementTagNameMap[K] {
+    const node = document.createElementNS(SVG, tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      node.setAttribute(key, String(value));
+    }
+    return node;
+  }
+
+  /**
+   * A small clock face: a ring that empties as the period runs down, tick marks at
+   * twelve, three, six and nine so it reads as a clock rather than a plain ring, and
+   * the countdown in the middle.
+   */
+  function dial(): HTMLElement {
+    const wrap = el("div", "dial");
+
+    const svg = svgEl("svg", { viewBox: "0 0 76 76", width: 76, height: 76 });
+    svg.setAttribute("aria-hidden", "true");
+
+    svg.append(
+      svgEl("circle", {
+        class: "dial-track",
+        cx: 38,
+        cy: 38,
+        r: DIAL_RADIUS,
+        fill: "none",
+        "stroke-width": 5,
+      }),
+    );
+
+    const fill = svgEl("circle", {
+      class: "dial-fill",
+      id: "now-dial",
+      cx: 38,
+      cy: 38,
+      r: DIAL_RADIUS,
+      fill: "none",
+      "stroke-width": 5,
+      "stroke-dasharray": DIAL_CIRCUMFERENCE,
+      "stroke-dashoffset": DIAL_CIRCUMFERENCE,
+    });
+    svg.append(fill);
+
+    // Twelve, three, six, nine.
+    const ticks: Array<[number, number, number, number]> = [
+      [38, 7, 38, 11],
+      [69, 38, 65, 38],
+      [38, 69, 38, 65],
+      [7, 38, 11, 38],
+    ];
+    for (const [x1, y1, x2, y2] of ticks) {
+      svg.append(
+        svgEl("line", { class: "dial-tick", x1, y1, x2, y2, "stroke-width": 2 }),
+      );
+    }
+
+    wrap.append(svg);
+
+    const value = el("span", "dial-value tnum");
+    value.id = "now-timer";
+    wrap.append(value);
+
+    return wrap;
   }
 
   function section(label: string, rows: HTMLElement[]): HTMLElement {
@@ -148,8 +203,7 @@ const base = import.meta.env.BASE_URL;
     return wrap;
   }
 
-  function render(tt: Timetable): void {
-    const snap = snapshot(tt, currentTime());
+  function render(tt: Timetable, snap: Snapshot): void {
     const colours = subjectColours(tt);
 
     const frag = document.createDocumentFragment();
@@ -184,27 +238,93 @@ const base = import.meta.env.BASE_URL;
     app.replaceChildren(frag);
   }
 
-  function paint(): void {
-    const tt = loadTimetable();
-    if (!tt) {
-      app.replaceChildren(
-        emptyState(
-          "No timetable yet",
-          "Deck needs your timetable before it can tell you where to be. It stays on this device and is never uploaded.",
-          { href: `${base}setup`, label: "Add my timetable" },
-        ),
-      );
-      return;
+  /**
+   * Seconds until the thing being counted down to. Mid-period that is the end of it;
+   * before school it is the start of the day; otherwise the next lesson.
+   */
+  function secondsLeft(snap: Snapshot, now: Date): number | null {
+    const elapsed = secondsInto(now);
+    if (snap.current) return snap.current.endMin * 60 - elapsed;
+    if (snap.state === "before-school" && snap.dayStart) {
+      return snap.dayStart.startMin * 60 - elapsed;
     }
-    render(tt);
+    if (snap.next && snap.next.daysAhead === 0) {
+      return snap.next.entry.startMin * 60 - elapsed;
+    }
+    return null;
   }
 
-  paint();
+  /** The per-second update: just the two things that actually change. */
+  function tickCard(snap: Snapshot, now: Date): void {
+    const seconds = secondsLeft(snap, now);
 
-  // Keep the countdown honest without draining the battery, and repaint whenever
-  // the phone comes back from sleep — that is when the screen is most often wrong.
-  setInterval(paint, 15_000);
+    const timer = document.getElementById("now-timer");
+    if (timer) timer.textContent = seconds === null ? "" : timerText(seconds);
+
+    const fill = document.getElementById("now-dial");
+    if (fill) {
+      // Mid-period the ring shows how much is left. Waiting for something to start
+      // there is nothing to be part-way through, so the ring stays empty.
+      let left = 0;
+      if (snap.current && seconds !== null) {
+        const span = (snap.current.endMin - snap.current.startMin) * 60;
+        // Clamp so a clock that is slightly out never overdraws the ring.
+        left = Math.min(1, Math.max(0, seconds / span));
+      }
+      fill.setAttribute(
+        "stroke-dashoffset",
+        String(DIAL_CIRCUMFERENCE * (1 - left)),
+      );
+    }
+  }
+
+  /**
+   * Rebuilding the whole screen every second would be wasteful and would flicker, so
+   * the full render only happens when the day, the state or the period changes. In
+   * between, only the timer and the progress bar are touched.
+   */
+  let lastShape = "";
+
+  function tick(): void {
+    const tt = loadTimetable();
+    if (!tt) {
+      if (lastShape !== "empty") {
+        lastShape = "empty";
+        app.replaceChildren(
+          emptyState(
+            "No timetable yet",
+            "Deck needs your timetable before it can tell you where to be. It stays on this device and is never uploaded.",
+            { href: `${base}edit`, label: "Add my timetable" },
+          ),
+        );
+      }
+      return;
+    }
+
+    const now = currentTime();
+    const snap = snapshot(tt, now);
+    const shape = [
+      snap.day,
+      snap.state,
+      snap.current?.slot.n ?? "-",
+      snap.next?.entry.slot.n ?? "-",
+      snap.next?.day ?? "-",
+      snap.remaining.length,
+    ].join("|");
+
+    if (shape !== lastShape) {
+      lastShape = shape;
+      render(tt, snap);
+    }
+    tickCard(snap, now);
+  }
+
+  tick();
+
+  // A real ticking timer. Also repaint whenever the phone comes back from sleep —
+  // that is when the screen is most often out of date.
+  setInterval(tick, 1000);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) paint();
+    if (!document.hidden) tick();
   });
 </script>

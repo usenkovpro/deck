@@ -4,11 +4,15 @@ import "../styles/components.css";
 
 interface Props {
   title: string;
-  /** Which bottom-nav item to mark as current. Setup has no nav item. */
-  nav?: "today" | "week" | "none";
+  /**
+   * Which bottom-nav item to mark as current. "plain" shows the nav with nothing
+   * marked — used by Setup and Edit, which are not nav destinations themselves but
+   * still need a way back out.
+   */
+  nav?: "today" | "week" | "plain" | "none";
 }
 
-const { title, nav = "none" } = Astro.props;
+const { title, nav = "plain" } = Astro.props;
 
 // Every internal link goes through BASE_URL so the app keeps working when it is
 // deployed to a subfolder (GitHub Pages) rather than the root of a domain.
@@ -56,12 +60,20 @@ const base = import.meta.env.BASE_URL;
     }
 
     <script>
-      import { shortDate } from "../lib/format";
+      import { clockTime, shortDate } from "../lib/format";
+      import { currentTime } from "../lib/now";
 
-      // The date is filled in on the device. Baking it in at build time would show
-      // whenever the site was last deployed, which could be months ago.
+      // The date and clock are filled in on the device. Baking them in at build time
+      // would show whenever the site was last deployed, which could be months ago.
       const slot = document.getElementById("today-date");
-      if (slot) slot.textContent = shortDate(new Date());
+      if (slot) {
+        const paint = () => {
+          const now = currentTime();
+          slot.textContent = `${shortDate(now)} · ${clockTime(now)}`;
+        };
+        paint();
+        setInterval(paint, 1000);
+      }
     </script>
   </body>
 </html>

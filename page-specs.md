@@ -23,8 +23,8 @@ to `/setup`.
 | Situation | What it says |
 |---|---|
 | In a lesson | The lesson, with countdown |
-| In break or lunch | `BREAK` / `LUNCH`, with countdown to the next lesson |
-| Before school | `SCHOOL STARTS` + time until first lesson |
+| In break or lunch | The period's own name — `BREAK`, `LUNCH`, `REGISTRATION` — with a countdown |
+| Before school | `SCHOOL STARTS` + time until the day starts, which may be registration rather than the first lesson |
 | After school | `SCHOOL'S DONE` + the next school day |
 | Weekend | `NO SCHOOL` + the next school day |
 | Free period | `FREE` + countdown to the next lesson |
@@ -53,18 +53,48 @@ unreadable, which is exactly why the paper timetable is annoying.
 
 ---
 
+## `/edit` — Edit
+
+Building a timetable by tapping. Every change saves immediately; there is no save
+button to forget to press.
+
+Two tabs:
+
+- **Lessons** — the day bar, then every teaching period of that day as a row. A
+  period with a lesson shows it; an empty one says "Add lesson". Tapping opens a
+  dialog for subject, teacher and room. The subject field autocompletes from
+  subjects already used, so the same subject is not typed five slightly different
+  ways across the week.
+- **Times** — every period with its start and end. Tapping edits it; there is also
+  `Add a period`. Periods are typed as lesson, break or lunch.
+
+Rules:
+
+- Periods are numbered by **counting only the teaching ones**. The `n` on a slot is
+  an internal id, and breaks use up numbers, so showing `n` would label a six-lesson
+  day "Period 1, 2, 4, 5, 7, 8".
+- **Overlapping periods are refused**, naming the period that clashes. Two periods
+  running at once makes "what's on now" meaningless.
+- Deleting a period also deletes the lessons in it, and says how many.
+- Nothing is written to storage until it passes the same validation the loader uses.
+  A change that saved but would not load again is indistinguishable, to the user,
+  from their timetable vanishing.
+- First run, with nothing saved: offer a generic school day to adjust, because an
+  empty Lessons tab has no rows to tap and no way out.
+
 ## `/setup` — Setup
 
-Phase 1 is import-only. The tap-to-edit builder is Phase 1b.
+The hub, not the editor.
 
 - Explains in one line that everything stays on this device and nothing is uploaded.
-- A textarea to paste timetable JSON.
-- `Import` button — validates, and on failure shows exactly what's wrong
-  (which field, which day) rather than a generic error.
-- If a timetable is already saved: a summary line ("5 days, 33 lessons, 16 subjects"),
-  an `Export` button that copies the JSON back out, and a `Clear` button with a
-  confirm step.
-- A collapsed `<details>` showing the expected JSON shape as an example.
+- A summary line ("5 days · 32 lessons · 16 subjects") and the primary button through
+  to `/edit`.
+- A collapsed `<details>` for JSON import and export — for backups and moving to
+  another phone, not the everyday path.
+- `Import` validates, and on failure shows exactly what's wrong (which field, which
+  day) rather than a generic error.
+- A delete button that needs two taps. A confirm dialog is too easy to dismiss by
+  accident on a phone.
 
 ---
 

@@ -1,0 +1,439 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="Edit — Deck">
+  <div id="app"></div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <datalist id="subject-list"></datalist>
+
+  <dialog id="lesson-dialog">
+    <form method="dialog" id="lesson-form">
+      <h2 id="lesson-title">Lesson</h2>
+      <label class="field">
+        <span class="label">Subject</span>
+        <input id="lesson-subject" name="subject" list="subject-list" required
+          autocomplete="off" autocapitalize="words" />
+      </label>
+      <label class="field">
+        <span class="label">Teacher</span>
+        <input id="lesson-teacher" name="teacher" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span class="label">Room</span>
+        <input id="lesson-room" name="room" autocomplete="off" />
+      </label>
+      <div class="dialog-actions">
+        <button class="btn" value="save">Save</button>
+        <button class="btn secondary" value="cancel" formnovalidate>Cancel</button>
+      </div>
+      <button class="btn danger dialog-destroy" value="remove" id="lesson-remove"
+        formnovalidate>Remove lesson</button>
+    </form>
+  </dialog>
+
+  <dialog id="slot-dialog">
+    <form method="dialog" id="slot-form">
+      <h2 id="slot-title">Period</h2>
+      <label class="field">
+        <span class="label">Starts</span>
+        <input id="slot-start" name="start" type="time" required />
+      </label>
+      <label class="field">
+        <span class="label">Ends</span>
+        <input id="slot-end" name="end" type="time" required />
+      </label>
+      <label class="field">
+        <span class="label">Type</span>
+        <select id="slot-type" name="type">
+          <option value="lesson">Lesson</option>
+          <option value="break">Break</option>
+          <option value="lunch">Lunch</option>
+        </select>
+      </label>
+      <div class="dialog-actions">
+        <button class="btn" value="save">Save</button>
+        <button class="btn secondary" value="cancel" formnovalidate>Cancel</button>
+      </div>
+      <button class="btn danger dialog-destroy" value="remove" id="slot-remove"
+        formnovalidate>Delete period</button>
+    </form>
+  </dialog>
+
+  <p class="section note"><a href={`${base}setup`}>Back to setup</a></p>
+
+</BaseLayout>
+
+<script define:vars={{ base }}>
+  window.__DECK_BASE__ = base;
+</script>
+
+<script>
+  import { loadTimetable, saveTimetable, parseTimetable } from "../lib/storage";
+  import {
+    createStarterTimetable,
+    setLesson,
+    removeLesson,
+    setSlot,
+    removeSlot,
+    nextSlotNumber,
+    findOverlap,
+    lessonsInSlot,
+  } from "../lib/edit";
+  import { dayKeyOf, subjectsInOrder } from "../lib/schedule";
+  import { subjectColours } from "../lib/subjects";
+  import { detailLine } from "../lib/format";
+  import { el, dayBar } from "../lib/render";
+  import { SCHOOL_DAYS, type DayKey, type Slot, type Timetable } from "../lib/types";
+
+  const app = document.getElementById("app")!;
+  const toast = document.getElementById("toast")!;
+  const subjectList = document.getElementById("subject-list") as HTMLDataListElement;
+
+  const lessonDialog = document.getElementById("lesson-dialog") as HTMLDialogElement;
+  const lessonForm = document.getElementById("lesson-form") as HTMLFormElement;
+  const lessonTitle = document.getElementById("lesson-title")!;
+  const lessonSubject = document.getElementById("lesson-subject") as HTMLInputElement;
+  const lessonTeacher = document.getElementById("lesson-teacher") as HTMLInputElement;
+  const lessonRoom = document.getElementById("lesson-room") as HTMLInputElement;
+  const lessonRemove = document.getElementById("lesson-remove") as HTMLButtonElement;
+
+  const slotDialog = document.getElementById("slot-dialog") as HTMLDialogElement;
+  const slotForm = document.getElementById("slot-form") as HTMLFormElement;
+  const slotTitle = document.getElementById("slot-title")!;
+  const slotStart = document.getElementById("slot-start") as HTMLInputElement;
+  const slotEnd = document.getElementById("slot-end") as HTMLInputElement;
+  const slotType = document.getElementById("slot-type") as HTMLSelectElement;
+  const slotRemove = document.getElementById("slot-remove") as HTMLButtonElement;
+
+  const today = dayKeyOf(new Date());
+
+  let tt: Timetable | null = loadTimetable();
+  let tab: "lessons" | "times" = "lessons";
+  let day: DayKey = SCHOOL_DAYS.includes(today) ? today : "Mon";
+  /** Which period the open dialog is editing. */
+  let editingSlot: Slot | null = null;
+
+  let toastTimer: number | undefined;
+  function flash(text: string): void {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 1800);
+  }
+
+  /**
+   * Save, but only after the change survives the same validation the loader uses.
+   * If a bug here ever produced a timetable the loader would reject, that would look
+   * to the user like their whole timetable had vanished on the next visit.
+   */
+  function commit(next: Timetable, message: string): void {
+    const checked = parseTimetable(next);
+    if (!checked.ok) {
+      flash(checked.error);
+      return;
+    }
+    tt = checked.value;
+    saveTimetable(tt);
+    render();
+    flash(message);
+  }
+
+  // --- Rows ----------------------------------------------------------------
+
+  function chevron(): SVGSVGElement {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("aria-hidden", "true");
+    svg.classList.add("row-chevron");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M9 18l6-6-6-6");
+    svg.append(path);
+    return svg;
+  }
+
+  function tappableRow(opts: {
+    rail?: string;
+    title: string;
+    detail?: string;
+    time?: string;
+    empty?: boolean;
+    /** Times rows have no subject, so a colour rail there would mean nothing. */
+    noRail?: boolean;
+    label: string;
+    onClick: () => void;
+  }): HTMLButtonElement {
+    const row = el("button", "row");
+    row.type = "button";
+    if (opts.empty) row.classList.add("is-empty");
+    row.setAttribute("aria-label", opts.label);
+
+    if (!opts.noRail) {
+      const rail = el("span", "row-rail");
+      if (opts.rail) rail.style.setProperty("--rail", opts.rail);
+      row.append(rail);
+    }
+
+    const main = el("div", "row-main");
+    main.append(el("div", "row-subject", opts.title));
+    if (opts.detail) main.append(el("div", "row-detail", opts.detail));
+    row.append(main);
+
+    if (opts.time) row.append(el("div", "row-time tnum", opts.time));
+    row.append(chevron());
+
+    row.addEventListener("click", opts.onClick);
+    return row;
+  }
+
+  // --- Lessons tab ---------------------------------------------------------
+
+  function renderLessons(current: Timetable): HTMLElement {
+    const wrap = el("div");
+    wrap.append(dayBar(day, today, (picked) => {
+      day = picked;
+      render();
+    }));
+
+    const colours = subjectColours(current);
+    const lessons = current.days[day] ?? [];
+    const list = el("div", "edit-list");
+
+    for (const slot of current.slots) {
+      const kind = slot.type ?? "lesson";
+      if (kind !== "lesson") {
+        list.append(
+          el("div", "divider", `${slot.label ?? kind} · ${slot.start}`),
+        );
+        continue;
+      }
+
+      const lesson = lessons.find((l) => l.n === slot.n);
+      list.append(
+        tappableRow({
+          rail: lesson ? colours.get(lesson.subject) : undefined,
+          title: lesson?.subject ?? "Add lesson",
+          detail: lesson ? detailLine(lesson.teacher, lesson.room) : undefined,
+          time: slot.start,
+          empty: !lesson,
+          label: lesson
+            ? `Edit ${lesson.subject} at ${slot.start}`
+            : `Add a lesson at ${slot.start}`,
+          onClick: () => openLessonDialog(slot),
+        }),
+      );
+    }
+
+    wrap.append(list);
+    wrap.append(
+      el(
+        "p",
+        "day-summary",
+        "Tap a period to set the subject. Period times live in the Times tab.",
+      ),
+    );
+    return wrap;
+  }
+
+  function openLessonDialog(slot: Slot): void {
+    if (!tt) return;
+    editingSlot = slot;
+    const lesson = (tt.days[day] ?? []).find((l) => l.n === slot.n);
+
+    lessonTitle.textContent = `${day} · ${slot.start}–${slot.end}`;
+    lessonSubject.value = lesson?.subject ?? "";
+    lessonTeacher.value = lesson?.teacher ?? "";
+    lessonRoom.value = lesson?.room ?? "";
+    lessonRemove.hidden = !lesson;
+
+    lessonDialog.showModal();
+  }
+
+  lessonDialog.addEventListener("close", () => {
+    const slot = editingSlot;
+    editingSlot = null;
+    if (!tt || !slot) return;
+
+    if (lessonDialog.returnValue === "remove") {
+      commit(removeLesson(tt, day, slot.n), "Lesson removed");
+      return;
+    }
+    if (lessonDialog.returnValue !== "save") return;
+
+    const subject = lessonSubject.value.trim();
+    if (!subject) return;
+    commit(
+      setLesson(tt, day, {
+        n: slot.n,
+        subject,
+        teacher: lessonTeacher.value.trim() || null,
+        room: lessonRoom.value.trim() || null,
+      }),
+      "Saved",
+    );
+  });
+
+  // --- Times tab -----------------------------------------------------------
+
+  function renderTimes(current: Timetable): HTMLElement {
+    const wrap = el("div");
+    const list = el("div", "edit-list");
+
+    // Periods are numbered by counting only the teaching ones. The `n` on a slot is
+    // an internal id — breaks and lunch use up numbers too, so showing `n` would
+    // label a six-lesson day "Period 1, 2, 4, 5, 7, 8".
+    let periodNumber = 0;
+
+    for (const slot of current.slots) {
+      const kind = slot.type ?? "lesson";
+      const taught = lessonsInSlot(current, slot.n);
+      if (kind === "lesson") periodNumber++;
+      list.append(
+        tappableRow({
+          noRail: true,
+          title: kind === "lesson" ? `Period ${periodNumber}` : (slot.label ?? kind),
+          detail:
+            kind === "lesson"
+              ? `${taught} lesson${taught === 1 ? "" : "s"} this week`
+              : "Not a teaching period",
+          time: `${slot.start}–${slot.end}`,
+          label: `Edit the period at ${slot.start}`,
+          onClick: () => openSlotDialog(slot),
+        }),
+      );
+    }
+    wrap.append(list);
+
+    const add = el("button", "btn secondary", "Add a period");
+    add.type = "button";
+    add.style.marginTop = "var(--s-4)";
+    add.addEventListener("click", () => openSlotDialog(null));
+    wrap.append(add);
+
+    wrap.append(
+      el(
+        "p",
+        "day-summary",
+        "Period times are shared by every day of the week.",
+      ),
+    );
+    return wrap;
+  }
+
+  function openSlotDialog(slot: Slot | null): void {
+    editingSlot = slot;
+    slotTitle.textContent = slot ? "Edit period" : "New period";
+    slotStart.value = slot?.start ?? "09:00";
+    slotEnd.value = slot?.end ?? "10:00";
+    slotType.value = slot?.type ?? "lesson";
+    slotRemove.hidden = slot === null;
+    slotDialog.showModal();
+  }
+
+  slotDialog.addEventListener("close", () => {
+    const slot = editingSlot;
+    editingSlot = null;
+    if (!tt) return;
+
+    if (slotDialog.returnValue === "remove" && slot) {
+      const taught = lessonsInSlot(tt, slot.n);
+      commit(
+        removeSlot(tt, slot.n),
+        taught > 0
+          ? `Period deleted, with ${taught} lesson${taught === 1 ? "" : "s"}`
+          : "Period deleted",
+      );
+      return;
+    }
+    if (slotDialog.returnValue !== "save") return;
+
+    const kind = slotType.value as "lesson" | "break" | "lunch";
+    const next: Slot = {
+      n: slot?.n ?? nextSlotNumber(tt),
+      start: slotStart.value,
+      end: slotEnd.value,
+      type: kind,
+      label: kind === "lesson" ? undefined : kind === "lunch" ? "Lunch" : "Break",
+    };
+
+    const clash = findOverlap(tt, next);
+    if (clash) {
+      flash(`That overlaps the period at ${clash.start}–${clash.end}`);
+      return;
+    }
+    commit(setSlot(tt, next), slot ? "Period updated" : "Period added");
+  });
+
+  // --- First run -----------------------------------------------------------
+
+  function renderFirstRun(): HTMLElement {
+    const box = el("div", "empty");
+    box.append(el("h2", undefined, "Start your timetable"));
+    box.append(
+      el(
+        "p",
+        undefined,
+        "Deck will set up a typical school day for you. Change the times to match your school, then fill in the lessons.",
+      ),
+    );
+    const start = el("button", "btn", "Set up my timetable");
+    start.type = "button";
+    start.addEventListener("click", () => {
+      tab = "times";
+      commit(createStarterTimetable(), "Now set your period times");
+    });
+    box.append(start);
+    return box;
+  }
+
+  // --- Shell ---------------------------------------------------------------
+
+  function tabBar(): HTMLElement {
+    const bar = el("div", "tabs");
+    const make = (id: "lessons" | "times", text: string) => {
+      const button = el("button", undefined, text);
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(tab === id));
+      button.addEventListener("click", () => {
+        tab = id;
+        render();
+      });
+      return button;
+    };
+    bar.append(make("lessons", "Lessons"), make("times", "Times"));
+    return bar;
+  }
+
+  function render(): void {
+    if (!tt) {
+      app.replaceChildren(renderFirstRun());
+      return;
+    }
+
+    // Subject autocomplete, so the same subject is not typed five slightly
+    // different ways across the week.
+    subjectList.replaceChildren(
+      ...subjectsInOrder(tt).map((subject) => {
+        const option = document.createElement("option");
+        option.value = subject;
+        return option;
+      }),
+    );
+
+    const frag = document.createDocumentFragment();
+    frag.append(tabBar());
+    frag.append(tab === "lessons" ? renderLessons(tt) : renderTimes(tt));
+    app.replaceChildren(frag);
+  }
+
+  render();
+</script>
