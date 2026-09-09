@@ -26,7 +26,19 @@ const base = import.meta.env.BASE_URL;
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Your school timetable, on your phone, offline." />
     <title>{title}</title>
+
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+    <link rel="manifest" href={`${base}manifest.webmanifest`} />
+
+    <!-- Installed, Deck runs without browser chrome, so the status bar takes its
+         colour from here. A manifest only carries one, hence the pair. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f6f8" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1116" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Deck" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
     <div class="shell">
@@ -74,6 +86,20 @@ const base = import.meta.env.BASE_URL;
         };
         paint();
         setInterval(paint, 1000);
+      }
+
+      // Offline support. Not registered in dev: a service worker serving its cached
+      // copy of a page is exactly what you do not want while editing that page.
+      if (import.meta.env.PROD && "serviceWorker" in navigator) {
+        addEventListener("load", () => {
+          navigator.serviceWorker
+            .register(`${import.meta.env.BASE_URL}sw.js`, {
+              scope: import.meta.env.BASE_URL,
+            })
+            .catch(() => {
+              // Offline support is a bonus; the app works fine without it.
+            });
+        });
       }
 
       // Say so, loudly, when the clock is a pretend one.

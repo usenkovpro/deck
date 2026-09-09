@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "icons": "node scripts/make-icons.mjs",
     "astro": "astro"
   },
   "dependencies": {
