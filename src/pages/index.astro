@@ -107,15 +107,27 @@ const base = import.meta.env.BASE_URL;
     if (detail) card.append(el("p", "now-detail", detail));
 
     const foot = el("div", "now-foot");
-    if (snap.current) {
-      foot.append(
-        el("span", "now-times tnum", `${snap.current.slot.start}–${snap.current.slot.end}`),
-      );
-    }
-    if (snap.minutesLeft !== null) foot.append(dial());
-    if (foot.childElementCount > 0) card.append(foot);
+    const note = el("span", "now-times tnum");
+    note.id = "now-note";
+    foot.append(note);
+    if (dialMode(snap) !== "none") foot.append(dial());
+    card.append(foot);
 
     return card;
+  }
+
+  /**
+   * What the dial is doing.
+   *
+   * It always tracks a *lesson*, never a break. In a lesson it counts that lesson
+   * down; the rest of the time it sits full at the next lesson's length, so during
+   * break you can see the whole 55:00 waiting for you rather than the break draining
+   * away. Once there is no lesson left today, there is nothing to show.
+   */
+  function dialMode(snap: Snapshot): "lesson" | "waiting" | "none" {
+    if (snap.current?.kind === "lesson") return "lesson";
+    if (snap.next && snap.next.daysAhead === 0) return "waiting";
+    return "none";
   }
 
   const DIAL_RADIUS = 32;
@@ -238,44 +250,46 @@ const base = import.meta.env.BASE_URL;
     app.replaceChildren(frag);
   }
 
-  /**
-   * Seconds until the thing being counted down to. Mid-period that is the end of it;
-   * before school it is the start of the day; otherwise the next lesson.
-   */
-  function secondsLeft(snap: Snapshot, now: Date): number | null {
-    const elapsed = secondsInto(now);
-    if (snap.current) return snap.current.endMin * 60 - elapsed;
-    if (snap.state === "before-school" && snap.dayStart) {
-      return snap.dayStart.startMin * 60 - elapsed;
-    }
-    if (snap.next && snap.next.daysAhead === 0) {
-      return snap.next.entry.startMin * 60 - elapsed;
-    }
-    return null;
-  }
-
-  /** The per-second update: just the two things that actually change. */
+  /** The per-second update: only the parts that actually change. */
   function tickCard(snap: Snapshot, now: Date): void {
-    const seconds = secondsLeft(snap, now);
+    const elapsed = secondsInto(now);
+    const mode = dialMode(snap);
+
+    let seconds: number | null = null;
+    let fractionLeft = 1;
+    let note = "";
+
+    if (mode === "lesson") {
+      const entry = snap.current!;
+      seconds = entry.endMin * 60 - elapsed;
+      const span = (entry.endMin - entry.startMin) * 60;
+      // Clamp so a clock that is slightly out never overdraws the ring.
+      fractionLeft = Math.min(1, Math.max(0, seconds / span));
+      note = `${entry.slot.start}–${entry.slot.end}`;
+    } else if (mode === "waiting") {
+      // Primed, not running: the whole lesson, ring full, waiting to start.
+      const entry = snap.next!.entry;
+      seconds = (entry.endMin - entry.startMin) * 60;
+      const until = entry.startMin * 60 - elapsed;
+      const name = entry.lesson?.subject ?? "Next";
+      note = until > 0 ? `${name} in ${timerText(until)}` : `${name} now`;
+    } else if (snap.state === "before-school" && snap.dayStart) {
+      note = `Starts in ${timerText(snap.dayStart.startMin * 60 - elapsed)}`;
+    }
 
     const timer = document.getElementById("now-timer");
     if (timer) timer.textContent = seconds === null ? "" : timerText(seconds);
 
     const fill = document.getElementById("now-dial");
     if (fill) {
-      // Mid-period the ring shows how much is left. Waiting for something to start
-      // there is nothing to be part-way through, so the ring stays empty.
-      let left = 0;
-      if (snap.current && seconds !== null) {
-        const span = (snap.current.endMin - snap.current.startMin) * 60;
-        // Clamp so a clock that is slightly out never overdraws the ring.
-        left = Math.min(1, Math.max(0, seconds / span));
-      }
       fill.setAttribute(
         "stroke-dashoffset",
-        String(DIAL_CIRCUMFERENCE * (1 - left)),
+        String(DIAL_CIRCUMFERENCE * (1 - fractionLeft)),
       );
     }
+
+    const noteSlot = document.getElementById("now-note");
+    if (noteSlot) noteSlot.textContent = note;
   }
 
   /**

@@ -16,8 +16,18 @@ to `/setup`.
 - Label: `NOW` (or `BREAK`, `LUNCH`)
 - Subject in `--t-hero`
 - Teacher · Room in `--t-sm` / `--text-2`
-- A progress bar showing how far through the period we are
-- Right-aligned: minutes remaining, e.g. `23 min left`
+- Right-aligned: the **dial** — a small clock face with the countdown in the middle,
+  ticking every second
+- Bottom left: the current period's times, or how long until the next lesson starts
+
+**The dial always tracks a lesson, never a break.** In a lesson it counts that lesson
+down and the ring empties with it. The rest of the time it sits full at the next
+lesson's whole length — during break you see the 55:00 waiting for you, not the break
+draining away — while the time until it starts ticks down as text beside it. When
+there is no lesson left today, the dial is not shown at all.
+
+The two must join up: at the moment the lesson starts, a dial reading 55:00 has to
+carry straight on to 54:59, never jump.
 
 **States the Now card must handle:**
 | Situation | What it says |

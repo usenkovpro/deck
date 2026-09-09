@@ -97,10 +97,6 @@ export interface Snapshot {
   state: NowState;
   /** The period happening right now, if any. */
   current: Entry | null;
-  /** Minutes until `current` ends — or, when nothing is on, until `next` starts. */
-  minutesLeft: number | null;
-  /** How far through the current period we are, 0–1. Null when nothing is on. */
-  progress: number | null;
   next: NextUp | null;
   /** Periods still to come today, not including `current`. */
   remaining: Entry[];
@@ -129,23 +125,9 @@ export function snapshot(tt: Timetable, now: Date): Snapshot {
     state = "after-school";
   }
 
-  const dayStart = today[0] ?? null;
-
-  // Mid-lesson we count down to the end of it; otherwise to whatever is next. Before
-  // school that is the start of the day, not the first lesson — if registration is
-  // at 07:45 then 07:45 is the time you have to be there, not 07:50.
-  let minutesLeft: number | null = null;
-  let progress: number | null = null;
-  if (current) {
-    minutesLeft = current.endMin - mins;
-    progress = (mins - current.startMin) / (current.endMin - current.startMin);
-  } else if (state === "before-school" && dayStart) {
-    minutesLeft = dayStart.startMin - mins;
-  } else if (next && next.daysAhead === 0) {
-    minutesLeft = next.entry.startMin - mins;
-  }
-
-  return { day, state, current, minutesLeft, progress, next, remaining, dayStart };
+  // Countdowns are worked out on screen, from these entries and the clock, so that
+  // there is only one place that decides how much time is left.
+  return { day, state, current, next, remaining, dayStart: today[0] ?? null };
 }
 
 /** The next actual lesson — skipping breaks, free periods, weekends and holidays. */
