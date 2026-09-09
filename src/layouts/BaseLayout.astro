@@ -1,0 +1,67 @@
+---
+import "../styles/global.css";
+import "../styles/components.css";
+
+interface Props {
+  title: string;
+  /** Which bottom-nav item to mark as current. Setup has no nav item. */
+  nav?: "today" | "week" | "none";
+}
+
+const { title, nav = "none" } = Astro.props;
+
+// Every internal link goes through BASE_URL so the app keeps working when it is
+// deployed to a subfolder (GitHub Pages) rather than the root of a domain.
+const base = import.meta.env.BASE_URL;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Your school timetable, on your phone, offline." />
+    <title>{title}</title>
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="app-header">
+        <h1 class="wordmark">DECK</h1>
+        <span class="today-date" id="today-date"></span>
+        <a class="icon-btn" href={`${base}setup`} aria-label="Setup">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5 8.9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9.5a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path>
+          </svg>
+        </a>
+      </header>
+
+      <main>
+        <slot />
+      </main>
+    </div>
+
+    {
+      nav !== "none" && (
+        <nav class="nav">
+          <a href={base} aria-current={nav === "today" ? "page" : undefined}>
+            Today
+          </a>
+          <a href={`${base}week`} aria-current={nav === "week" ? "page" : undefined}>
+            Week
+          </a>
+        </nav>
+      )
+    }
+
+    <script>
+      import { shortDate } from "../lib/format";
+
+      // The date is filled in on the device. Baking it in at build time would show
+      // whenever the site was last deployed, which could be months ago.
+      const slot = document.getElementById("today-date");
+      if (slot) slot.textContent = shortDate(new Date());
+    </script>
+  </body>
+</html>

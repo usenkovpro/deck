@@ -1,43 +1,70 @@
-# Astro Starter Kit: Minimal
+# Deck
 
-```sh
-npm create astro@latest -- --template minimal
+Your school timetable, on your phone, offline.
+
+Deck answers one question fast: **where am I meant to be right now?** It shows the
+lesson you are in, how long is left of it, and what is next. No login, no account,
+no internet needed.
+
+## Privacy
+
+Deck has no network code. Your timetable is saved in your browser's local storage on
+your own device and is never uploaded, because there is nowhere for it to go. The
+app ships empty — you add your own timetable, and you can delete it at any time from
+the Setup screen.
+
+Personal timetables are never committed to this repo: real data belongs in a
+`*.local.json` file, which git ignores.
+
+## Screens
+
+- **Today** — the lesson happening now with a countdown, then what's next, then the
+  rest of the day.
+- **Week** — pick a day, see it as a list. Deliberately not a grid: a grid is
+  unreadable at 375px, which is the main thing wrong with a paper timetable.
+- **Setup** — import, export and delete your timetable.
+
+## Running it
+
+```
+npm install
+npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Then open the address it prints.
 
-## 🚀 Project Structure
+To preview any moment of the school day without waiting for it, add `?at=` to the
+Today screen:
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```
+http://localhost:4321/?at=2026-09-11T12:00
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Adding your timetable
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Open **Setup** and paste JSON in this shape:
 
-Any static assets, like images, can be placed in the `public/` directory.
+```json
+{
+  "slots": [
+    { "n": 1, "start": "07:50", "end": "08:45" },
+    { "n": 2, "start": "08:45", "end": "09:40" },
+    { "n": 3, "start": "09:40", "end": "09:55", "type": "break", "label": "Break" }
+  ],
+  "days": {
+    "Mon": [
+      { "n": 1, "subject": "Computer Science", "teacher": "Mrs R Chaudhry", "room": "2011" },
+      { "n": 2, "subject": "Music", "teacher": "Mr N Jackson", "room": "1060" }
+    ]
+  }
+}
+```
 
-## 🧞 Commands
+`slots` are the period times, shared across every day. `days` says which subject sits
+in which period. A period with no lesson shows as free; a day you leave out is a day
+with no school. Import tells you exactly which field is wrong if something does not
+fit.
 
-All commands are run from the root of the project, from a terminal:
+## Built with
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+[Astro](https://astro.build), TypeScript, and no other dependencies.

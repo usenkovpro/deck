@@ -1,0 +1,139 @@
+/* Deck — all custom properties live here. See design-system.md. */
+
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --text-1: #12151a;
+  --text-2: #5b6472;
+  --text-3: #8b95a3;
+  --line: #e2e7ec;
+  --accent: #2563eb;
+  --bad: #c62f24;
+
+  --sub-1: #3b82f6;
+  --sub-2: #14b8a6;
+  --sub-3: #f59e0b;
+  --sub-4: #a855f7;
+  --sub-5: #22c55e;
+  --sub-6: #ef4444;
+  --sub-7: #6366f1;
+  --sub-8: #ec4899;
+  --sub-9: #84cc16;
+  --sub-10: #f97316;
+  --sub-11: #06b6d4;
+  --sub-12: #d946ef;
+  --sub-13: #10b981;
+  --sub-14: #eab308;
+  --sub-15: #8b5cf6;
+  --sub-16: #f43f5e;
+
+  --t-hero: 2rem;
+  --t-lg: 1.25rem;
+  --t-md: 1rem;
+  --t-sm: 0.875rem;
+  --t-xs: 0.75rem;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+
+  --shadow: 0 1px 2px rgb(18 21 26 / 0.06), 0 8px 24px rgb(18 21 26 / 0.08);
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116;
+    --surface: #171b22;
+    --surface-2: #1f242c;
+    --text-1: #f2f5f9;
+    --text-2: #9aa4b2;
+    --text-3: #69727f;
+    --line: #252b34;
+    --accent: #6b9bff;
+    --bad: #ff6b5e;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font);
+  font-size: var(--t-md);
+  line-height: 1.45;
+  /* Room for the fixed bottom nav, plus the iPhone home indicator. */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A phone app that happens to open in a browser — never a full-width website. */
+.shell {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--s-4);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Times must not jitter as the countdown ticks. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

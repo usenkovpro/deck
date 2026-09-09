@@ -1,17 +1,210 @@
 ---
+import BaseLayout from "../layouts/BaseLayout.astro";
 
+const base = import.meta.env.BASE_URL;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="Today — Deck" nav="today">
+  <div id="app"></div>
+  <noscript>
+    <div class="empty">
+      <h2>JavaScript is off</h2>
+      <p>Deck keeps your timetable on your device, so it needs JavaScript to read it.</p>
+    </div>
+  </noscript>
+</BaseLayout>
+
+<script define:vars={{ base }}>
+  window.__DECK_BASE__ = base;
+</script>
+
+<script>
+  import { loadTimetable } from "../lib/storage";
+  import { snapshot } from "../lib/schedule";
+  import { subjectColours } from "../lib/subjects";
+  import { countdown, longDay, whenLabel } from "../lib/format";
+  import { el, entryRow, periodRow, emptyState } from "../lib/render";
+  import type { Snapshot } from "../lib/schedule";
+  import type { Timetable } from "../lib/types";
+
+  const base: string = (window as any).__DECK_BASE__ ?? "/";
+  const app = document.getElementById("app")!;
+
+  /**
+   * Normally just "now" — but `?at=2026-09-09T09:00` pretends it is another moment,
+   * so every state (mid-lesson, break, weekend) can be checked without waiting for
+   * the school day to reach it.
+   */
+  function currentTime(): Date {
+    const at = new URLSearchParams(location.search).get("at");
+    if (at) {
+      const pretend = new Date(at);
+      if (!Number.isNaN(pretend.getTime())) return pretend;
+    }
+    return new Date();
+  }
+
+  /** The headline of the now card, which changes completely with the state. */
+  function nowCardText(snap: Snapshot): {
+    label: string;
+    hero: string;
+    detail: string;
+  } {
+    const next = snap.next;
+    const nextName = next ? next.entry.lesson?.subject ?? "Lesson" : null;
+
+    switch (snap.state) {
+      case "lesson": {
+        const lesson = snap.current!.lesson!;
+        return {
+          label: "Now",
+          hero: lesson.subject,
+          detail: [lesson.teacher, lesson.room].filter(Boolean).join(" · "),
+        };
+      }
+      case "break":
+      case "lunch":
+        return {
+          label: snap.current!.slot.label ?? snap.state,
+          hero: snap.state === "lunch" ? "Lunch" : "Break",
+          detail: nextName ? `Then ${nextName}` : "",
+        };
+      case "free":
+        return {
+          label: "Free",
+          hero: "Free period",
+          detail: nextName ? `Then ${nextName}` : "",
+        };
+      case "before-school":
+        return {
+          label: "School starts",
+          hero: next ? next.entry.slot.start : "",
+          detail: nextName ? `First up: ${nextName}` : "",
+        };
+      case "after-school":
+        return {
+          label: "School's done",
+          hero: "That's the day",
+          detail: next
+            ? `Next: ${nextName} · ${longDay(next.day)} ${next.entry.slot.start}`
+            : "",
+        };
+      case "no-school":
+      default:
+        return {
+          label: "No school",
+          hero: longDay(snap.day),
+          detail: next
+            ? `Next: ${nextName} · ${longDay(next.day)} ${next.entry.slot.start}`
+            : "",
+        };
+    }
+  }
+
+  function nowCard(snap: Snapshot): HTMLElement {
+    const { label, hero, detail } = nowCardText(snap);
+
+    const card = el("section", "now-card");
+    card.append(el("span", "label", label));
+    card.append(el("h2", "now-subject", hero));
+    if (detail) card.append(el("p", "now-detail", detail));
+
+    if (snap.progress !== null) {
+      const bar = el("div", "progress");
+      const fill = el("span");
+      // Clamp so a clock that is slightly out never overflows the track.
+      fill.style.width = `${Math.min(100, Math.max(0, snap.progress * 100))}%`;
+      bar.append(fill);
+      card.append(bar);
+    }
+
+    const foot = el("div", "now-foot");
+    if (snap.current) {
+      foot.append(
+        el("span", "now-times tnum", `${snap.current.slot.start}–${snap.current.slot.end}`),
+      );
+    }
+    if (snap.minutesLeft !== null) {
+      const text =
+        snap.current !== null
+          ? countdown(snap.minutesLeft)
+          : `in ${snap.minutesLeft} min`;
+      foot.append(el("span", "now-left tnum", text));
+    }
+    if (foot.childElementCount > 0) card.append(foot);
+
+    return card;
+  }
+
+  function section(label: string, rows: HTMLElement[]): HTMLElement {
+    const wrap = el("section", "section");
+    wrap.append(el("span", "label", label));
+    const list = el("ul", "list");
+    list.style.listStyle = "none";
+    list.style.padding = "0";
+    list.style.margin = "0";
+    rows.forEach((row) => list.append(row));
+    wrap.append(list);
+    return wrap;
+  }
+
+  function render(tt: Timetable): void {
+    const snap = snapshot(tt, currentTime());
+    const colours = subjectColours(tt);
+
+    const frag = document.createDocumentFragment();
+    frag.append(nowCard(snap));
+
+    const next = snap.next;
+    if (next) {
+      const row = periodRow(next.entry, colours);
+      const label =
+        next.daysAhead === 0
+          ? "Next up"
+          : `Next up · ${whenLabel(next.day, next.entry.slot.start, next.daysAhead)}`;
+      frag.append(section(label, [row]));
+    }
+
+    // Everything still to come today, minus the lesson already shown as "next up".
+    // Compared by period number, not by object: `remaining` and `next` are built by
+    // separate passes, so the same lesson is two different objects in each.
+    const rest = snap.remaining.filter(
+      (entry) =>
+        !(next && next.daysAhead === 0 && entry.slot.n === next.entry.slot.n),
+    );
+    if (rest.length > 0) {
+      frag.append(
+        section(
+          "Rest of today",
+          rest.map((entry) => entryRow(entry, colours)),
+        ),
+      );
+    }
+
+    app.replaceChildren(frag);
+  }
+
+  function paint(): void {
+    const tt = loadTimetable();
+    if (!tt) {
+      app.replaceChildren(
+        emptyState(
+          "No timetable yet",
+          "Deck needs your timetable before it can tell you where to be. It stays on this device and is never uploaded.",
+          { href: `${base}setup`, label: "Add my timetable" },
+        ),
+      );
+      return;
+    }
+    render(tt);
+  }
+
+  paint();
+
+  // Keep the countdown honest without draining the battery, and repaint whenever
+  // the phone comes back from sleep — that is when the screen is most often wrong.
+  setInterval(paint, 15_000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) paint();
+  });
+</script>

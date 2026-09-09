@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Personal timetables. These contain real names, classes and room numbers, so they
+# must never end up in a public repo. Keep your own data in a *.local.json file.
+*.local.json

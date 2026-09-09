@@ -1,0 +1,100 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="Week — Deck" nav="week">
+  <div id="app"></div>
+  <noscript>
+    <div class="empty">
+      <h2>JavaScript is off</h2>
+      <p>Deck keeps your timetable on your device, so it needs JavaScript to read it.</p>
+    </div>
+  </noscript>
+</BaseLayout>
+
+<script define:vars={{ base }}>
+  window.__DECK_BASE__ = base;
+</script>
+
+<script>
+  import { loadTimetable } from "../lib/storage";
+  import { entriesFor, dayKeyOf } from "../lib/schedule";
+  import { subjectColours } from "../lib/subjects";
+  import { el, entryRow, emptyState } from "../lib/render";
+  import { longDay } from "../lib/format";
+  import { SCHOOL_DAYS, type DayKey, type Timetable } from "../lib/types";
+
+  const base: string = (window as any).__DECK_BASE__ ?? "/";
+  const app = document.getElementById("app")!;
+
+  function dayBar(selected: DayKey, today: DayKey, onPick: (d: DayKey) => void) {
+    const bar = el("div", "daybar");
+    for (const day of SCHOOL_DAYS) {
+      const button = el("button", undefined, day.toUpperCase());
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(day === selected));
+      // The visible label is three letters, so spell the day out for screen readers.
+      button.setAttribute(
+        "aria-label",
+        day === today ? `${longDay(day)}, today` : longDay(day),
+      );
+      if (day === today) button.classList.add("is-today");
+      button.addEventListener("click", () => onPick(day));
+      bar.append(button);
+    }
+    return bar;
+  }
+
+  /** "First 07:50 · Last 15:10 · 7 lessons" */
+  function summary(tt: Timetable, day: DayKey): string {
+    const entries = entriesFor(tt, day);
+    const lessons = entries.filter((e) => e.kind === "lesson");
+    if (lessons.length === 0) return "Nothing scheduled.";
+    const first = lessons[0].slot.start;
+    const last = lessons[lessons.length - 1].slot.end;
+    const count = `${lessons.length} lesson${lessons.length === 1 ? "" : "s"}`;
+    return `${first} – ${last} · ${count}`;
+  }
+
+  function render(tt: Timetable, selected: DayKey, today: DayKey): void {
+    const colours = subjectColours(tt);
+    const frag = document.createDocumentFragment();
+
+    frag.append(dayBar(selected, today, (day) => render(tt, day, today)));
+
+    const entries = entriesFor(tt, selected);
+    if (entries.length === 0) {
+      frag.append(
+        emptyState("No lessons", `Nothing is scheduled on ${selected}. Enjoy it.`),
+      );
+    } else {
+      const list = el("ul", "list");
+      list.style.listStyle = "none";
+      list.style.padding = "0";
+      list.style.margin = "0";
+      entries.forEach((entry) => list.append(entryRow(entry, colours)));
+      frag.append(list);
+      frag.append(el("p", "day-summary tnum", summary(tt, selected)));
+    }
+
+    app.replaceChildren(frag);
+  }
+
+  const tt = loadTimetable();
+  if (!tt) {
+    app.replaceChildren(
+      emptyState(
+        "No timetable yet",
+        "Add your timetable and your whole week shows up here.",
+        { href: `${base}setup`, label: "Add my timetable" },
+      ),
+    );
+  } else {
+    // Open on today, or on Monday at the weekend — nobody wants to land on Sunday.
+    const today = dayKeyOf(new Date());
+    const opening = SCHOOL_DAYS.includes(today) ? today : "Mon";
+    render(tt, opening, today);
+  }
+</script>

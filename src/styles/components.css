@@ -1,0 +1,381 @@
+/* Shared component styles.
+   These live in a global stylesheet rather than in scoped Astro styles because the
+   rows are built in JavaScript at runtime, and Astro's scoping only reaches markup
+   it can see at build time. */
+
+/* --- App chrome ------------------------------------------------------------ */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4) 0 var(--s-3);
+}
+
+.wordmark {
+  font-size: var(--t-md);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin: 0;
+}
+
+.app-header .today-date {
+  margin-left: auto;
+  font-size: var(--t-sm);
+  color: var(--text-2);
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.icon-btn:active {
+  background: var(--surface-2);
+}
+
+.nav {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4) calc(var(--s-2) + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.nav a {
+  flex: 1;
+  max-width: 160px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text-2);
+}
+
+.nav a[aria-current="page"] {
+  color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* --- Sections -------------------------------------------------------------- */
+
+.section {
+  margin-top: var(--s-5);
+}
+
+.section > .label {
+  display: block;
+  margin-bottom: var(--s-2);
+}
+
+/* --- The now card ---------------------------------------------------------- */
+
+.now-card {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: var(--s-5) var(--s-4) var(--s-4);
+}
+
+.now-card .now-subject {
+  font-size: var(--t-hero);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-top: var(--s-2);
+  overflow-wrap: break-word;
+}
+
+.now-card .now-detail {
+  font-size: var(--t-sm);
+  color: var(--text-2);
+  margin-top: var(--s-1);
+}
+
+.now-foot {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+.now-foot .now-left {
+  margin-left: auto;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.now-times {
+  font-size: var(--t-sm);
+  color: var(--text-3);
+}
+
+.progress {
+  height: 4px;
+  margin-top: var(--s-3);
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s linear;
+}
+
+/* --- Period rows ----------------------------------------------------------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 56px;
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.row + .row {
+  margin-top: var(--s-2);
+}
+
+.row-rail {
+  flex: none;
+  width: 3px;
+  align-self: stretch;
+  min-height: 32px;
+  margin: var(--s-2) 0;
+  border-radius: 999px;
+  background: var(--rail, var(--text-3));
+}
+
+.row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.row-subject {
+  font-size: var(--t-md);
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.row-detail {
+  font-size: var(--t-sm);
+  color: var(--text-2);
+}
+
+.row-time {
+  flex: none;
+  text-align: right;
+  font-size: var(--t-sm);
+  color: var(--text-2);
+  line-height: 1.3;
+}
+
+.row-time .row-end {
+  color: var(--text-3);
+}
+
+.row.is-free .row-subject {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* Break and lunch are dividers, not rows — they are not where you have to be. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* --- Day selector (week view) ---------------------------------------------- */
+
+.daybar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: var(--s-1);
+  padding: var(--s-2) 0;
+  background: var(--bg);
+}
+
+.daybar button {
+  position: relative;
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.daybar button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* A dot marks today, so it stays findable once another day is selected. */
+.daybar button.is-today::after {
+  content: "";
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.daybar button.is-today[aria-pressed="true"]::after {
+  background: #fff;
+}
+
+.day-summary {
+  margin-top: var(--s-4);
+  font-size: var(--t-sm);
+  color: var(--text-3);
+}
+
+/* --- Empty states, buttons, forms ------------------------------------------ */
+
+.empty {
+  margin-top: var(--s-6);
+  padding: var(--s-5) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.empty p {
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  margin-top: var(--s-2);
+}
+
+.empty h2 {
+  font-size: var(--t-lg);
+}
+
+.btn {
+  display: inline-grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0 var(--s-5);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn.secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text-1);
+}
+
+.btn.danger {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--bad);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+.empty .btn {
+  margin-top: var(--s-4);
+}
+
+textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--t-sm);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.note {
+  font-size: var(--t-sm);
+  color: var(--text-2);
+}
+
+.message {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: var(--t-sm);
+}
+
+.message.is-error {
+  color: var(--bad);
+}
+
+details {
+  margin-top: var(--s-5);
+  font-size: var(--t-sm);
+  color: var(--text-2);
+}
+
+details pre {
+  overflow-x: auto;
+  padding: var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: var(--t-xs);
+}

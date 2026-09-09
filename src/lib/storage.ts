@@ -1,0 +1,146 @@
+/**
+ * Reading and writing the timetable. This is the only module that touches
+ * localStorage — nothing else in Deck should know where the data lives.
+ *
+ * Everything stays on the device. Deck makes no network requests, ever.
+ */
+
+import { DAY_KEYS, type DayKey, type Timetable } from "./types";
+
+const KEY = "deck.timetable.v1";
+
+export type ParseResult =
+  | { ok: true; value: Timetable }
+  | { ok: false; error: string };
+
+const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/**
+ * Validates untrusted JSON into a Timetable. Errors name the exact field that is
+ * wrong — "days.Wed[2].subject is missing" is a fixable message, "invalid JSON"
+ * is not.
+ */
+export function parseTimetable(input: unknown): ParseResult {
+  const fail = (error: string): ParseResult => ({ ok: false, error });
+
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return fail("The top level should be an object like { slots: [...], days: {...} }");
+  }
+  const raw = input as Record<string, unknown>;
+
+  if (!Array.isArray(raw.slots) || raw.slots.length === 0) {
+    return fail("slots is missing, or is not a non-empty array");
+  }
+
+  const slots = [];
+  const seen = new Set<number>();
+  for (let i = 0; i < raw.slots.length; i++) {
+    const s = raw.slots[i] as Record<string, unknown>;
+    const at = `slots[${i}]`;
+    if (typeof s !== "object" || s === null) return fail(`${at} is not an object`);
+    if (typeof s.n !== "number" || !Number.isFinite(s.n)) {
+      return fail(`${at}.n must be a number (the period number)`);
+    }
+    if (seen.has(s.n)) return fail(`${at}.n = ${s.n} is used twice`);
+    seen.add(s.n);
+    if (typeof s.start !== "string" || !TIME.test(s.start)) {
+      return fail(`${at}.start must be a time like "09:55"`);
+    }
+    if (typeof s.end !== "string" || !TIME.test(s.end)) {
+      return fail(`${at}.end must be a time like "10:50"`);
+    }
+    if (s.end <= s.start) {
+      return fail(`${at} ends at ${s.end}, which is not after its start ${s.start}`);
+    }
+    const type = s.type ?? "lesson";
+    if (type !== "lesson" && type !== "break" && type !== "lunch") {
+      return fail(`${at}.type must be "lesson", "break" or "lunch"`);
+    }
+    slots.push({
+      n: s.n,
+      start: s.start,
+      end: s.end,
+      type,
+      label: typeof s.label === "string" ? s.label : undefined,
+    });
+  }
+  slots.sort((a, b) => a.start.localeCompare(b.start));
+
+  if (typeof raw.days !== "object" || raw.days === null || Array.isArray(raw.days)) {
+    return fail("days is missing, or is not an object keyed by Mon, Tue, ...");
+  }
+
+  const days: Timetable["days"] = {};
+  for (const [key, value] of Object.entries(raw.days as Record<string, unknown>)) {
+    if (!(DAY_KEYS as readonly string[]).includes(key)) {
+      return fail(`days.${key} is not a day — use ${DAY_KEYS.join(", ")}`);
+    }
+    if (!Array.isArray(value)) return fail(`days.${key} must be an array of lessons`);
+
+    const lessons = [];
+    for (let i = 0; i < value.length; i++) {
+      const l = value[i] as Record<string, unknown>;
+      const at = `days.${key}[${i}]`;
+      if (typeof l !== "object" || l === null) return fail(`${at} is not an object`);
+      if (typeof l.n !== "number") return fail(`${at}.n must be a period number`);
+      if (!seen.has(l.n)) return fail(`${at}.n = ${l.n} has no matching slot`);
+      if (typeof l.subject !== "string" || l.subject.trim() === "") {
+        return fail(`${at}.subject is missing`);
+      }
+      lessons.push({
+        n: l.n,
+        subject: l.subject.trim(),
+        teacher: typeof l.teacher === "string" ? l.teacher : null,
+        room: typeof l.room === "string" ? l.room : null,
+      });
+    }
+    days[key as DayKey] = lessons;
+  }
+
+  const meta = (raw.meta ?? {}) as Record<string, unknown>;
+  return {
+    ok: true,
+    value: {
+      version: 1,
+      meta: {
+        label: typeof meta.label === "string" ? meta.label : undefined,
+        asAt: typeof meta.asAt === "string" ? meta.asAt : undefined,
+      },
+      slots,
+      days,
+    },
+  };
+}
+
+/**
+ * The saved timetable, or null. Data that fails validation is treated as no data —
+ * a corrupted save should show the empty state, not a blank screen.
+ */
+export function loadTimetable(): Timetable | null {
+  let text: string | null = null;
+  try {
+    text = localStorage.getItem(KEY);
+  } catch {
+    return null; // Private browsing, storage disabled — behave like a first run.
+  }
+  if (!text) return null;
+
+  try {
+    const parsed = parseTimetable(JSON.parse(text));
+    return parsed.ok ? parsed.value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveTimetable(tt: Timetable): void {
+  localStorage.setItem(KEY, JSON.stringify(tt));
+}
+
+export function clearTimetable(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* nothing saved anyway */
+  }
+}
