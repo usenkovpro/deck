@@ -52,8 +52,15 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      // Only Deck's own caches. Cache storage is shared across a whole origin, and
+      // usenkovpro.github.io hosts other projects too — deleting everything that is
+      // not ours would reach into theirs.
       const names = await caches.keys();
-      await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+      await Promise.all(
+        names
+          .filter((name) => name.startsWith("deck-") && name !== CACHE)
+          .map((name) => caches.delete(name)),
+      );
       await self.clients.claim();
     })(),
   );

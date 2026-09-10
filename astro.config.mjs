@@ -51,5 +51,10 @@ function precacheBuiltAssets() {
 
 // https://astro.build/config
 export default defineConfig({
+  // GitHub Pages serves this from a subfolder, not the root of a domain. Every
+  // internal link, the manifest and the service worker scope all go through
+  // import.meta.env.BASE_URL so that this is the only place the path is written.
+  site: "https://usenkovpro.github.io",
+  base: "/deck/",
   integrations: [precacheBuiltAssets()],
 });
