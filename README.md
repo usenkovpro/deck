@@ -2,6 +2,9 @@
 
 Your school timetable, on your phone, offline.
 
+**[usenkovpro.github.io/deck](https://usenkovpro.github.io/deck/)** — open it on your
+phone and add it to your home screen.
+
 Deck answers one question fast: **where am I meant to be right now?** It shows the
 lesson you are in, how long is left of it, and what is next. No login, no account,
 no internet needed.
