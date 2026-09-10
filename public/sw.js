@@ -10,7 +10,21 @@
  * works unchanged when the app is served from a subfolder.
  */
 
-const CACHE = "deck-v1";
+/**
+ * These two are rewritten at build time by the `deck-precache` integration in
+ * astro.config.mjs — the built JavaScript and CSS have hashed filenames that only
+ * exist once a build has run, so they cannot be listed by hand.
+ *
+ * Left as-is they are harmless: the placeholder asset is filtered out, and the
+ * worker is never registered in dev anyway.
+ */
+const BUILD = "__BUILD__";
+const BUILD_ASSETS = ["__PRECACHE__"];
+
+// The cache name carries the build hash, so a new deploy lands in a new cache and
+// the previous one is deleted on activate. Without that, a stale bundle could
+// outlive the HTML that goes with it.
+const CACHE = `deck-${BUILD}`;
 
 const CORE = [
   "",
@@ -22,6 +36,7 @@ const CORE = [
   "icon-192.png",
   "icon-512.png",
   "apple-touch-icon.png",
+  ...BUILD_ASSETS.filter((path) => path !== "__PRECACHE__"),
 ];
 
 self.addEventListener("install", (event) => {
