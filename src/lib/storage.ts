@@ -1,11 +1,11 @@
 /**
- * Reading and writing the timetable. This is the only module that touches
- * localStorage — nothing else in Deck should know where the data lives.
+ * Reading and writing the timetable and homework. This is the only module that
+ * touches localStorage — nothing else in Deck should know where the data lives.
  *
  * Everything stays on the device. Deck makes no network requests, ever.
  */
 
-import { DAY_KEYS, type DayKey, type Timetable } from "./types";
+import { DAY_KEYS, type DayKey, type Homework, type Timetable } from "./types";
 
 const KEY = "deck.timetable.v1";
 
@@ -143,4 +143,51 @@ export function clearTimetable(): void {
   } catch {
     /* nothing saved anyway */
   }
+}
+
+// --- Homework --------------------------------------------------------------
+
+const HOMEWORK_KEY = "deck.homework.v1";
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Homework from untrusted JSON. Unlike the timetable, a bad item is dropped rather
+ * than the whole list: throwing away every piece of homework because one entry is
+ * malformed would be far worse than losing that one entry.
+ */
+export function parseHomework(input: unknown): Homework[] {
+  if (!Array.isArray(input)) return [];
+
+  const out: Homework[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "object" || raw === null) continue;
+    const h = raw as Record<string, unknown>;
+    if (typeof h.id !== "string" || h.id === "") continue;
+    if (typeof h.subject !== "string" || h.subject.trim() === "") continue;
+    if (typeof h.title !== "string" || h.title.trim() === "") continue;
+    if (typeof h.due !== "string" || !DATE.test(h.due)) continue;
+
+    out.push({
+      id: h.id,
+      subject: h.subject.trim(),
+      title: h.title.trim(),
+      due: h.due,
+      done: h.done === true,
+      created: typeof h.created === "number" ? h.created : 0,
+    });
+  }
+  return out;
+}
+
+export function loadHomework(): Homework[] {
+  try {
+    const text = localStorage.getItem(HOMEWORK_KEY);
+    return text ? parseHomework(JSON.parse(text)) : [];
+  } catch {
+    return []; // Storage disabled or corrupt JSON: behave like there is none.
+  }
+}
+
+export function saveHomework(items: Homework[]): void {
+  localStorage.setItem(HOMEWORK_KEY, JSON.stringify(items));
 }

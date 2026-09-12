@@ -255,6 +255,9 @@ const base = import.meta.env.BASE_URL;
     lessonRoom.value = lesson?.room ?? "";
     lessonRemove.hidden = !lesson;
 
+    // Closing with Escape leaves returnValue as it was, so without this reset,
+    // Escape after removing one lesson would remove this one too.
+    lessonDialog.returnValue = "";
     lessonDialog.showModal();
   }
 
@@ -336,6 +339,8 @@ const base = import.meta.env.BASE_URL;
     slotEnd.value = slot?.end ?? "10:00";
     slotType.value = slot?.type ?? "lesson";
     slotRemove.hidden = slot === null;
+    // Same as the lesson dialog: Escape keeps the previous returnValue.
+    slotDialog.returnValue = "";
     slotDialog.showModal();
   }
 

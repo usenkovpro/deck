@@ -63,6 +63,40 @@ unreadable, which is exactly why the paper timetable is annoying.
 
 ---
 
+## `/homework` — Homework
+
+What's due, most urgent first. Third tab in the bottom nav.
+
+- Groups, in order: **Overdue**, **Due today**, **Due tomorrow**, **Coming up** (the
+  next week), **Later**, **Done**. Empty groups are not shown.
+- Each row: subject colour rail, a round tick button, the task, and "Subject · Due
+  Thursday". Overdue dates are in `--bad`, which is exactly what it is for.
+- **Ticking and editing are separate buttons.** A whole-row tap that did either would
+  do the wrong one half the time.
+- Done items are struck through and listed most recent first, with a "Clear finished"
+  button.
+
+**Adding.** One dialog: subject (autocompleted from the timetable), what to do, and
+the due date. **Choosing a subject fills in the date of the next lesson of that
+subject**, and says so under the field ("Next Maths lesson: Mon 14 Sept at 13:30").
+Homework is nearly always due next lesson, and that is the fiddly thing to work out
+from a paper timetable. Once the date has been changed by hand, changing the subject
+no longer overwrites it.
+
+Works with no timetable too. The subject is then free text and the date defaults to
+tomorrow.
+
+**Dates are local, never UTC.** `toISOString()` is UTC, and Dubai is four hours
+ahead, so anything added between midnight and 04:00 would land on the wrong day.
+
+**On Today:** if anything is overdue, due today or due tomorrow, a line under the now
+card links through: "1 overdue · 2 due tomorrow". It is not shown when nothing is
+urgent. A reminder that is always there stops being read.
+
+**Storage:** `deck.homework.v1`, separate from the timetable. A malformed item is
+dropped on load rather than discarding the list. Losing every piece of homework
+over one bad entry would be far worse than losing that entry.
+
 ## `/edit` — Edit
 
 Building a timetable by tapping. Every change saves immediately; there is no save

@@ -9,7 +9,7 @@ interface Props {
    * marked — used by Setup and Edit, which are not nav destinations themselves but
    * still need a way back out.
    */
-  nav?: "today" | "week" | "plain" | "none";
+  nav?: "today" | "week" | "homework" | "plain" | "none";
 }
 
 const { title, nav = "plain" } = Astro.props;
@@ -67,6 +67,12 @@ const base = import.meta.env.BASE_URL;
           </a>
           <a href={`${base}week`} aria-current={nav === "week" ? "page" : undefined}>
             Week
+          </a>
+          <a
+            href={`${base}homework`}
+            aria-current={nav === "homework" ? "page" : undefined}
+          >
+            Homework
           </a>
         </nav>
       )

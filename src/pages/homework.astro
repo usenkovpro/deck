@@ -1,0 +1,323 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Homework — Deck" nav="homework">
+  <div id="app"></div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <datalist id="subject-list"></datalist>
+
+  <dialog id="hw-dialog">
+    <form method="dialog">
+      <h2 id="hw-heading">Add homework</h2>
+      <label class="field">
+        <span class="label">Subject</span>
+        <input id="hw-subject" list="subject-list" required autocomplete="off"
+          autocapitalize="words" />
+      </label>
+      <label class="field">
+        <span class="label">What to do</span>
+        <input id="hw-title" required autocomplete="off"
+          placeholder="Worksheet 4, questions 1–10" />
+      </label>
+      <label class="field">
+        <span class="label">Due</span>
+        <input id="hw-due" type="date" required />
+      </label>
+      <p class="field-hint" id="hw-hint"></p>
+      <div class="dialog-actions">
+        <button class="btn" value="save">Save</button>
+        <button class="btn secondary" value="cancel" formnovalidate>Cancel</button>
+      </div>
+      <button class="btn danger dialog-destroy" value="delete" id="hw-delete"
+        formnovalidate>Delete</button>
+    </form>
+  </dialog>
+
+  <noscript>
+    <div class="empty">
+      <h2>JavaScript is off</h2>
+      <p>Deck keeps your homework on your device, so it needs JavaScript to read it.</p>
+    </div>
+  </noscript>
+</BaseLayout>
+
+<script>
+  import { loadTimetable, loadHomework, saveHomework } from "../lib/storage";
+  import { subjectsInOrder } from "../lib/schedule";
+  import { subjectColours } from "../lib/subjects";
+  import { currentTime } from "../lib/now";
+  import { shortDate } from "../lib/format";
+  import { el } from "../lib/render";
+  import {
+    GROUP_LABELS,
+    GROUP_ORDER,
+    addDays,
+    byDue,
+    dueLabel,
+    groupOf,
+    isoDate,
+    newId,
+    nextLessonOf,
+  } from "../lib/homework";
+  import type { Homework } from "../lib/types";
+
+  const app = document.getElementById("app")!;
+  const toast = document.getElementById("toast")!;
+  const subjectList = document.getElementById("subject-list") as HTMLDataListElement;
+
+  const dialog = document.getElementById("hw-dialog") as HTMLDialogElement;
+  const heading = document.getElementById("hw-heading")!;
+  const subjectInput = document.getElementById("hw-subject") as HTMLInputElement;
+  const titleInput = document.getElementById("hw-title") as HTMLInputElement;
+  const dueInput = document.getElementById("hw-due") as HTMLInputElement;
+  const hint = document.getElementById("hw-hint")!;
+  const deleteButton = document.getElementById("hw-delete") as HTMLButtonElement;
+
+  const tt = loadTimetable();
+  const timetableSubjects = tt ? subjectsInOrder(tt) : [];
+
+  let items: Homework[] = loadHomework();
+  /** The item the open dialog is editing, or null when adding a new one. */
+  let editing: Homework | null = null;
+  /**
+   * Once the date has been picked by hand, changing the subject must not overwrite
+   * it. Otherwise fixing a typo in the subject would quietly move the due date.
+   */
+  let dueTouched = false;
+
+  let toastTimer: number | undefined;
+  function flash(text: string): void {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 1800);
+  }
+
+  function commit(next: Homework[], message?: string): void {
+    items = next;
+    saveHomework(items);
+    render();
+    if (message) flash(message);
+  }
+
+  // --- Rows ----------------------------------------------------------------
+
+  function tickIcon(): SVGSVGElement {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "3");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M5 12.5l4.5 4.5L19 7.5");
+    svg.append(path);
+    return svg;
+  }
+
+  function row(item: Homework, colours: Map<string, string>, today: Date): HTMLElement {
+    const li = el("li", "row hw-row");
+    if (item.done) li.classList.add("is-done");
+
+    const rail = el("span", "row-rail");
+    const colour = colours.get(item.subject);
+    if (colour) rail.style.setProperty("--rail", colour);
+    li.append(rail);
+
+    // Two buttons, not one: ticking it off and opening it to edit are different
+    // actions, and a whole-row tap that did either would do the wrong one half
+    // the time.
+    const check = el("button", "hw-check");
+    check.type = "button";
+    check.setAttribute("aria-pressed", String(item.done));
+    check.setAttribute("aria-label", `Done: ${item.subject}, ${item.title}`);
+    const box = el("span", "hw-box");
+    box.append(tickIcon());
+    check.append(box);
+    check.addEventListener("click", () => {
+      commit(
+        items.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)),
+        item.done ? undefined : "Done",
+      );
+    });
+    li.append(check);
+
+    const main = el("button", "hw-main");
+    main.type = "button";
+    main.append(el("div", "row-subject", item.title));
+    const detail = el("div", "row-detail");
+    detail.append(document.createTextNode(`${item.subject} · `));
+    detail.append(
+      el(
+        "span",
+        groupOf(item, today) === "overdue" ? "hw-bad" : undefined,
+        dueLabel(item, today),
+      ),
+    );
+    main.append(detail);
+    main.addEventListener("click", () => openDialog(item));
+    li.append(main);
+
+    return li;
+  }
+
+  // --- Screen --------------------------------------------------------------
+
+  function render(): void {
+    const today = currentTime();
+    const colours = tt ? subjectColours(tt) : new Map<string, string>();
+    const frag = document.createDocumentFragment();
+
+    const head = el("div", "page-head");
+    head.append(el("h2", undefined, "Homework"));
+    const add = el("button", "btn", "Add");
+    add.type = "button";
+    add.addEventListener("click", () => openDialog(null));
+    head.append(add);
+    frag.append(head);
+
+    if (items.length === 0) {
+      const box = el("div", "empty");
+      box.append(el("h2", undefined, "Nothing due"));
+      box.append(
+        el(
+          "p",
+          undefined,
+          "When homework is set, add it here. Deck fills in the due date from your timetable, which is usually the next lesson of that subject.",
+        ),
+      );
+      frag.append(box);
+      app.replaceChildren(frag);
+      return;
+    }
+
+    for (const group of GROUP_ORDER) {
+      const inGroup = items
+        .filter((item) => groupOf(item, today) === group)
+        // Finished work reads best most recent first; everything else soonest first.
+        .sort(group === "done" ? (a, b) => byDue(b, a) : byDue);
+      if (inGroup.length === 0) continue;
+
+      const section = el("section", "section");
+      section.append(el("span", "label", `${GROUP_LABELS[group]} · ${inGroup.length}`));
+      const list = el("ul", "plain-list");
+      inGroup.forEach((item) => list.append(row(item, colours, today)));
+      section.append(list);
+
+      if (group === "done") {
+        const clear = el("button", "btn secondary hw-clear", "Clear finished");
+        clear.type = "button";
+        clear.addEventListener("click", () =>
+          commit(items.filter((i) => !i.done), "Cleared"),
+        );
+        section.append(clear);
+      }
+      frag.append(section);
+    }
+
+    app.replaceChildren(frag);
+  }
+
+  // --- Add and edit --------------------------------------------------------
+
+  /** Autocomplete from the timetable, plus any subject already used for homework. */
+  function fillSubjects(): void {
+    const names = new Set([...timetableSubjects, ...items.map((i) => i.subject)]);
+    subjectList.replaceChildren(
+      ...[...names].map((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        return option;
+      }),
+    );
+  }
+
+  /** Suggest the next lesson of the chosen subject, and say so under the date. */
+  function suggestDue(): void {
+    const subject = subjectInput.value.trim();
+    const next = tt && subject ? nextLessonOf(tt, subject, currentTime()) : null;
+
+    if (next) {
+      hint.textContent = `Next ${subject} lesson: ${shortDate(next.date)} at ${next.start}`;
+      if (!dueTouched) dueInput.value = isoDate(next.date);
+      return;
+    }
+
+    // Stay quiet while a known subject is still being typed. "Ma is not on your
+    // timetable" flashing up on the way to typing "Maths" is noise.
+    const typing = timetableSubjects.some((known) =>
+      known.toLowerCase().startsWith(subject.toLowerCase()),
+    );
+    hint.textContent =
+      tt && subject && !typing
+        ? `${subject} is not on your timetable, so pick the date yourself.`
+        : "";
+  }
+
+  function openDialog(item: Homework | null): void {
+    editing = item;
+    heading.textContent = item ? "Edit homework" : "Add homework";
+    subjectInput.value = item?.subject ?? "";
+    titleInput.value = item?.title ?? "";
+    dueInput.value = item?.due ?? isoDate(addDays(currentTime(), 1));
+    dueTouched = item !== null;
+    deleteButton.hidden = item === null;
+
+    fillSubjects();
+    suggestDue();
+
+    // Closing with Escape leaves returnValue as it was, so without this reset,
+    // Escape after a previous Delete would delete this item too.
+    dialog.returnValue = "";
+    dialog.showModal();
+  }
+
+  subjectInput.addEventListener("input", suggestDue);
+  dueInput.addEventListener("input", () => (dueTouched = true));
+
+  dialog.addEventListener("close", () => {
+    const item = editing;
+    editing = null;
+
+    if (dialog.returnValue === "delete" && item) {
+      commit(items.filter((i) => i.id !== item.id), "Deleted");
+      return;
+    }
+    if (dialog.returnValue !== "save") return;
+
+    const subject = subjectInput.value.trim();
+    const title = titleInput.value.trim();
+    const due = dueInput.value;
+    if (!subject || !title || !due) return;
+
+    if (item) {
+      commit(
+        items.map((i) => (i.id === item.id ? { ...i, subject, title, due } : i)),
+        "Saved",
+      );
+    } else {
+      commit(
+        [...items, { id: newId(), subject, title, due, done: false, created: Date.now() }],
+        "Added",
+      );
+    }
+  });
+
+  render();
+
+  // Groups are relative to today, so a page left open overnight has to move
+  // "due tomorrow" into "due today" by itself.
+  let renderedDay = isoDate(currentTime());
+  setInterval(() => {
+    const day = isoDate(currentTime());
+    if (day !== renderedDay) {
+      renderedDay = day;
+      render();
+    }
+  }, 60_000);
+</script>

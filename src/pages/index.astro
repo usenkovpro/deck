@@ -19,7 +19,8 @@ const base = import.meta.env.BASE_URL;
 </script>
 
 <script>
-  import { loadTimetable } from "../lib/storage";
+  import { loadTimetable, loadHomework } from "../lib/storage";
+  import { homeworkSummary } from "../lib/homework";
   import { snapshot, secondsInto } from "../lib/schedule";
   import { currentTime } from "../lib/now";
   import { subjectColours } from "../lib/subjects";
@@ -215,11 +216,40 @@ const base = import.meta.env.BASE_URL;
     return wrap;
   }
 
+  /**
+   * One line linking to Homework, only when something is urgent. A reminder that
+   * is always on screen stops being read.
+   */
+  function homeworkLine(): HTMLElement | null {
+    const counts = homeworkSummary(loadHomework(), currentTime());
+    const parts: HTMLElement[] = [];
+    if (counts.overdue) parts.push(el("span", "hw-bad", `${counts.overdue} overdue`));
+    if (counts.today) parts.push(el("span", undefined, `${counts.today} due today`));
+    if (counts.tomorrow) {
+      parts.push(el("span", undefined, `${counts.tomorrow} due tomorrow`));
+    }
+    if (parts.length === 0) return null;
+
+    const link = el("a", "hw-summary");
+    link.href = `${base}homework`;
+    link.append(el("span", "label", "Homework"));
+    const line = el("span", "hw-summary-line");
+    parts.forEach((part, i) => {
+      if (i > 0) line.append(" · ");
+      line.append(part);
+    });
+    link.append(line);
+    return link;
+  }
+
   function render(tt: Timetable, snap: Snapshot): void {
     const colours = subjectColours(tt);
 
     const frag = document.createDocumentFragment();
     frag.append(nowCard(snap));
+
+    const homework = homeworkLine();
+    if (homework) frag.append(homework);
 
     const next = snap.next;
     if (next) {
@@ -324,6 +354,8 @@ const base = import.meta.env.BASE_URL;
       snap.next?.entry.slot.n ?? "-",
       snap.next?.day ?? "-",
       snap.remaining.length,
+      // Homework ticked off in another tab should clear the line here too.
+      JSON.stringify(homeworkSummary(loadHomework(), now)),
     ].join("|");
 
     if (shape !== lastShape) {

@@ -56,3 +56,15 @@ export interface Entry {
   startMin: number;
   endMin: number;
 }
+
+/** One piece of homework. Tied to a subject by name, not to a particular lesson. */
+export interface Homework {
+  id: string;
+  subject: string;
+  title: string;
+  /** "YYYY-MM-DD", a local date — see isoDate() for why it is never UTC. */
+  due: string;
+  done: boolean;
+  /** Milliseconds since 1970, so items due the same day keep the order they were added. */
+  created: number;
+}

@@ -46,6 +46,8 @@ src/pages/index.astro    Today
 src/pages/week.astro     Week
 src/pages/edit.astro     Tap-to-edit builder: lessons and period times
 src/pages/setup.astro    Summary, import / export, delete
+src/pages/homework.astro Homework list, add / edit / tick off
+src/lib/homework.ts      Due-date maths, grouping, next lesson of a subject
 src/lib/edit.ts          Timetable mutations — each returns a new timetable
 src/styles/global.css    All custom properties live here
 src/styles/components.css  Shared component styles (global, because rows are built in JS)
@@ -73,7 +75,8 @@ there.
 1. **Timetable** — Today and Week screens, import via JSON. *(done)*
 1b. **Tap-to-edit builder** — build and change a timetable without touching JSON.
     *(done)*
-2. **Homework** — add homework against a subject with a due date, sorted by soonest.
+2. **Homework**: add homework against a subject with a due date, sorted by
+   soonest. The due date defaults to the next lesson of that subject. *(done)*
 3. **Install on the phone** — PWA, offline, home screen icon. *(mostly done — see below)*
 4. **Revision** — flashcards with spaced repetition.
 5. Whatever the daily use suggests by then.

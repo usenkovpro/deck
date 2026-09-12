@@ -388,6 +388,118 @@ button.row:active {
   display: none;
 }
 
+/* --- Homework -------------------------------------------------------------- */
+
+.plain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+
+.page-head h2 {
+  font-size: var(--t-lg);
+}
+
+.hw-row {
+  gap: var(--s-2);
+}
+
+.hw-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: calc(-1 * var(--s-1)) 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.hw-box {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--text-3);
+  border-radius: 50%;
+  /* The tick is always there, just invisible until done — so ticking does not
+     shift anything by a pixel. */
+  color: transparent;
+}
+
+.hw-check[aria-pressed="true"] .hw-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+
+.hw-main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--s-1) 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hw-row.is-done .row-subject {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.hw-bad {
+  color: var(--bad);
+}
+
+.hw-clear {
+  margin-top: var(--s-3);
+}
+
+/* The homework line on the Today screen. */
+.hw-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  min-height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  font-size: var(--t-sm);
+  text-decoration: none;
+}
+
+.hw-summary-line {
+  margin-left: auto;
+  font-weight: 600;
+  text-align: right;
+}
+
+.field-hint {
+  margin-top: var(--s-2);
+  font-size: var(--t-sm);
+  color: var(--text-2);
+}
+
+.field-hint:empty {
+  display: none;
+}
+
 /* --- Dialogs --------------------------------------------------------------- */
 
 dialog {
