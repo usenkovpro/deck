@@ -99,7 +99,20 @@ body {
 .shell {
   max-width: 480px;
   margin: 0 auto;
-  padding: 0 var(--s-4);
+  padding: 0 max(var(--s-4), env(safe-area-inset-right)) 0
+    max(var(--s-4), env(safe-area-inset-left));
+}
+
+/* Installed on an iPhone, the status bar is see-through and the page runs under it.
+   This paints the page background behind the clock and battery, so text scrolling
+   up does not show through them. Its height is zero in a normal browser. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top);
+  background: var(--bg);
+  z-index: 10;
 }
 
 h1,

@@ -9,7 +9,10 @@
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-4) 0 var(--s-3);
+  /* Installed on an iPhone, Deck draws under the status bar, so the header has to
+     start below it — otherwise the gear sits under the battery and cannot be
+     tapped. env() is zero in a normal browser, so this changes nothing there. */
+  padding: calc(var(--s-4) + env(safe-area-inset-top)) 0 var(--s-3);
 }
 
 .wordmark {
@@ -267,7 +270,8 @@
 
 .daybar {
   position: sticky;
-  top: 0;
+  /* Stick below an iPhone's status bar, not underneath it. */
+  top: env(safe-area-inset-top);
   z-index: 1;
   display: flex;
   gap: var(--s-1);
