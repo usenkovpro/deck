@@ -504,6 +504,87 @@ button.row:active {
   display: none;
 }
 
+/* --- Bag list -------------------------------------------------------------- */
+
+.kit-intro {
+  margin-top: var(--s-2);
+}
+
+.kit-none {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* A list of things, not code: the monospace used for JSON would be wrong here. */
+textarea.kit-items {
+  min-height: 140px;
+  font-family: var(--font);
+  font-size: var(--t-md);
+}
+
+.bag-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-2);
+}
+
+.bag-head a {
+  font-size: var(--t-sm);
+}
+
+.bag-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.bag-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--s-2) var(--s-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bag-list li + li .bag-toggle {
+  border-top: 1px solid var(--line);
+}
+
+.bag-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.bag-for {
+  flex: none;
+  max-width: 45%;
+  font-size: var(--t-xs);
+  color: var(--text-3);
+  text-align: right;
+}
+
+.bag-toggle[aria-pressed="true"] .hw-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+
+.bag-toggle[aria-pressed="true"] .bag-text {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
 /* --- Dialogs --------------------------------------------------------------- */
 
 dialog {

@@ -19,13 +19,20 @@ const base = import.meta.env.BASE_URL;
 </script>
 
 <script>
-  import { loadTimetable, loadHomework } from "../lib/storage";
-  import { homeworkSummary } from "../lib/homework";
+  import {
+    loadTimetable,
+    loadHomework,
+    loadKit,
+    loadPacked,
+    savePacked,
+  } from "../lib/storage";
+  import { homeworkSummary, isoDate, addDays } from "../lib/homework";
+  import { bagFor, packingDay } from "../lib/kit";
   import { snapshot, secondsInto } from "../lib/schedule";
   import { currentTime } from "../lib/now";
   import { subjectColours } from "../lib/subjects";
   import { timerText, longDay, whenLabel } from "../lib/format";
-  import { el, entryRow, periodRow, emptyState } from "../lib/render";
+  import { el, entryRow, periodRow, emptyState, tickIcon } from "../lib/render";
   import type { Snapshot } from "../lib/schedule";
   import type { Timetable } from "../lib/types";
 
@@ -242,6 +249,85 @@ const base = import.meta.env.BASE_URL;
     return link;
   }
 
+  /**
+   * The bag card: "In your bag today", or once school is over, "Pack for tomorrow".
+   * Which day it covers is decided by packingDay() in lib/kit.ts.
+   */
+  function bagCard(tt: Timetable, snap: Snapshot): HTMLElement | null {
+    const kit = loadKit();
+    if (kit.everyDay.length === 0 && Object.keys(kit.bySubject).length === 0) {
+      const hint = el("p", "section note");
+      hint.append("Deck can list what to pack each day. ");
+      const link = el("a", undefined, "Set up your bag list");
+      link.href = `${base}kit`;
+      hint.append(link);
+      return hint;
+    }
+
+    const target = packingDay(snap);
+    if (!target) return null;
+    const bag = bagFor(tt, kit, target.day);
+    if (bag.length === 0) return null;
+
+    // Ticks belong to the date being packed for, not to today.
+    const date = isoDate(addDays(currentTime(), target.daysAhead));
+    const packed = loadPacked(date);
+    const isPacked = (item: string) =>
+      packed.some((p) => p.toLowerCase() === item.toLowerCase());
+    const done = bag.filter((b) => isPacked(b.item)).length;
+
+    const title =
+      target.daysAhead === 0
+        ? "In your bag today"
+        : target.daysAhead === 1
+          ? "Pack for tomorrow"
+          : `Pack for ${longDay(target.day)}`;
+
+    const wrap = el("section", "section");
+    const head = el("div", "bag-head");
+    head.append(el("span", "label", `${title} · ${done} of ${bag.length}`));
+    const edit = el("a", undefined, "Edit");
+    edit.href = `${base}kit`;
+    edit.setAttribute("aria-label", "Edit bag list");
+    head.append(edit);
+    wrap.append(head);
+
+    const list = el("ul", "plain-list bag-list");
+    for (const { item, subjects } of bag) {
+      const on = isPacked(item);
+      const button = el("button", "bag-toggle");
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(on));
+      const box = el("span", "hw-box");
+      box.append(tickIcon());
+      button.append(box);
+      button.append(el("span", "bag-text", item));
+      button.append(
+        el("span", "bag-for", subjects.length > 0 ? subjects.join(", ") : "Every day"),
+      );
+      button.addEventListener("click", () => {
+        savePacked(
+          date,
+          on
+            ? packed.filter((p) => p.toLowerCase() !== item.toLowerCase())
+            : [...packed, item],
+        );
+        repaint();
+      });
+      const li = el("li");
+      li.append(button);
+      list.append(li);
+    }
+    wrap.append(list);
+    return wrap;
+  }
+
+  /** Rebuild now, even though nothing about the period has changed. */
+  function repaint(): void {
+    lastShape = "";
+    tick();
+  }
+
   function render(tt: Timetable, snap: Snapshot): void {
     const colours = subjectColours(tt);
 
@@ -250,6 +336,9 @@ const base = import.meta.env.BASE_URL;
 
     const homework = homeworkLine();
     if (homework) frag.append(homework);
+
+    const bag = bagCard(tt, snap);
+    if (bag) frag.append(bag);
 
     const next = snap.next;
     if (next) {

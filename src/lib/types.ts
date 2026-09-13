@@ -68,3 +68,12 @@ export interface Homework {
   /** Milliseconds since 1970, so items due the same day keep the order they were added. */
   created: number;
 }
+
+/**
+ * What to bring. Items are plain text ("PE kit", "Calculator"), listed per subject
+ * by name, plus a list for every school day whatever the lessons are.
+ */
+export interface Kit {
+  everyDay: string[];
+  bySubject: Record<string, string[]>;
+}

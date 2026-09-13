@@ -63,6 +63,37 @@ unreadable, which is exactly why the paper timetable is annoying.
 
 ---
 
+## `/kit` — Bag list
+
+What each subject needs you to bring, set once. Reached from Setup and from the bag
+card on Today.
+
+- An **Every school day** row (water bottle, laptop), then one row per subject in
+  timetable order, with its colour rail and what it needs, or "Nothing extra".
+- Tapping a row opens a dialog with a plain textarea, **one item per line**. No
+  add/remove buttons per item: typing a list is faster on a phone than tapping
+  through one.
+- Saving trims every line and drops blanks and duplicates. A subject left with
+  nothing is removed rather than stored empty.
+
+**On Today — the bag card.** It sits under the homework line.
+
+- **Which day it is for changes with the day.** Before and during school it is
+  today: "In your bag today". Once school is over, or on a day with none, it is the
+  next school day: "Pack for tomorrow", "Pack for Monday". The bag is packed the
+  evening before, and a list of what today needed is no use at 9pm.
+- Every-day items first, then subject kit in lesson order. An item two subjects both
+  need appears once, naming both: a calculator for Maths and Science is one
+  calculator.
+- Each item can be ticked as packed, with a count in the heading ("Pack for tomorrow
+  · 2 of 5"). Ticks belong to the date being packed for, so yesterday's ticks never
+  claim tomorrow's bag is ready.
+- If no kit is set up at all, a single line offers to set one up. If kit exists but
+  that day needs nothing, the card is not shown.
+
+**Storage:** `deck.kit.v1` for the kit, `deck.packed.v1` for the ticks. Bad data
+becomes an empty kit, never a crash.
+
 ## `/homework` — Homework
 
 What's due, most urgent first. Third tab in the bottom nav.

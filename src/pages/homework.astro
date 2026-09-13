@@ -50,7 +50,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   import { subjectColours } from "../lib/subjects";
   import { currentTime } from "../lib/now";
   import { shortDate } from "../lib/format";
-  import { el } from "../lib/render";
+  import { el, tickIcon } from "../lib/render";
   import {
     GROUP_LABELS,
     GROUP_ORDER,
@@ -104,21 +104,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   }
 
   // --- Rows ----------------------------------------------------------------
-
-  function tickIcon(): SVGSVGElement {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("width", "14");
-    svg.setAttribute("height", "14");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "3");
-    svg.setAttribute("aria-hidden", "true");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", "M5 12.5l4.5 4.5L19 7.5");
-    svg.append(path);
-    return svg;
-  }
 
   function row(item: Homework, colours: Map<string, string>, today: Date): HTMLElement {
     const li = el("li", "row hw-row");

@@ -106,3 +106,19 @@ export function emptyState(
   }
   return box;
 }
+
+/** The tick inside a round check box, shared by homework and the bag list. */
+export function tickIcon(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "3");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M5 12.5l4.5 4.5L19 7.5");
+  svg.append(path);
+  return svg;
+}

@@ -32,6 +32,7 @@ const CORE = [
   "setup/",
   "edit/",
   "homework/",
+  "kit/",
   "manifest.webmanifest",
   "favicon.svg",
   "icon-192.png",

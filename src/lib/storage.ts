@@ -5,7 +5,13 @@
  * Everything stays on the device. Deck makes no network requests, ever.
  */
 
-import { DAY_KEYS, type DayKey, type Homework, type Timetable } from "./types";
+import {
+  DAY_KEYS,
+  type DayKey,
+  type Homework,
+  type Kit,
+  type Timetable,
+} from "./types";
 
 const KEY = "deck.timetable.v1";
 
@@ -190,4 +196,67 @@ export function loadHomework(): Homework[] {
 
 export function saveHomework(items: Homework[]): void {
   localStorage.setItem(HOMEWORK_KEY, JSON.stringify(items));
+}
+
+// --- Bag list --------------------------------------------------------------
+
+const KIT_KEY = "deck.kit.v1";
+const PACKED_KEY = "deck.packed.v1";
+
+/** Trimmed, non-empty, and without case-insensitive duplicates. */
+function cleanItems(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const raw of value) {
+    if (typeof raw !== "string") continue;
+    const item = raw.trim();
+    if (item && !out.some((o) => o.toLowerCase() === item.toLowerCase())) out.push(item);
+  }
+  return out;
+}
+
+/** Bad data becomes an empty kit, never a crash. Subjects left empty are dropped. */
+export function parseKit(input: unknown): Kit {
+  const raw = (typeof input === "object" && input !== null ? input : {}) as Record<
+    string,
+    unknown
+  >;
+  const bySubject: Record<string, string[]> = {};
+  if (typeof raw.bySubject === "object" && raw.bySubject !== null) {
+    for (const [subject, items] of Object.entries(raw.bySubject)) {
+      const clean = cleanItems(items);
+      if (subject.trim() && clean.length > 0) bySubject[subject.trim()] = clean;
+    }
+  }
+  return { everyDay: cleanItems(raw.everyDay), bySubject };
+}
+
+export function loadKit(): Kit {
+  try {
+    const text = localStorage.getItem(KIT_KEY);
+    return parseKit(text ? JSON.parse(text) : null);
+  } catch {
+    return parseKit(null);
+  }
+}
+
+export function saveKit(kit: Kit): void {
+  localStorage.setItem(KIT_KEY, JSON.stringify(kit));
+}
+
+/**
+ * What has been ticked as packed, for one date. Only the date being packed for is
+ * kept, so yesterday's ticks cannot carry over and claim tomorrow's bag is ready.
+ */
+export function loadPacked(date: string): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PACKED_KEY) ?? "null");
+    return raw && raw.date === date ? cleanItems(raw.items) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePacked(date: string, items: string[]): void {
+  localStorage.setItem(PACKED_KEY, JSON.stringify({ date, items }));
 }

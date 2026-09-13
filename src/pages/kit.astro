@@ -1,0 +1,165 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="Bag list — Deck">
+  <div id="app"></div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="kit-dialog">
+    <form method="dialog">
+      <h2 id="kit-heading">Kit</h2>
+      <label class="field">
+        <span class="label">What to bring, one per line</span>
+        <textarea id="kit-items" class="kit-items" rows="5" autocapitalize="sentences"
+          placeholder={"PE kit\nWater bottle"}></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button class="btn" value="save">Save</button>
+        <button class="btn secondary" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <p class="section note"><a href={base}>Back to today</a></p>
+</BaseLayout>
+
+<script define:vars={{ base }}>
+  window.__DECK_BASE__ = base;
+</script>
+
+<script>
+  import { loadTimetable, loadKit, saveKit, parseKit } from "../lib/storage";
+  import { subjectsInOrder } from "../lib/schedule";
+  import { subjectColours } from "../lib/subjects";
+  import { el, emptyState } from "../lib/render";
+  import type { Kit } from "../lib/types";
+
+  const base: string = (window as any).__DECK_BASE__ ?? "/";
+  const app = document.getElementById("app")!;
+  const toast = document.getElementById("toast")!;
+  const dialog = document.getElementById("kit-dialog") as HTMLDialogElement;
+  const heading = document.getElementById("kit-heading")!;
+  const itemsInput = document.getElementById("kit-items") as HTMLTextAreaElement;
+
+  const tt = loadTimetable();
+  let kit: Kit = loadKit();
+  /** The list the open dialog is editing: a subject, or null for every school day. */
+  let editing: { subject: string | null } | null = null;
+
+  let toastTimer: number | undefined;
+  function flash(text: string): void {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 1800);
+  }
+
+  function itemsOf(subject: string | null): string[] {
+    return subject === null ? kit.everyDay : (kit.bySubject[subject] ?? []);
+  }
+
+  function kitRow(title: string, subject: string | null, rail?: string): HTMLElement {
+    const items = itemsOf(subject);
+    const row = el("button", "row");
+    row.type = "button";
+    row.setAttribute("aria-label", `Edit what to bring for ${title}`);
+
+    const railEl = el("span", "row-rail");
+    if (rail) railEl.style.setProperty("--rail", rail);
+    row.append(railEl);
+
+    const main = el("div", "row-main");
+    main.append(el("div", "row-subject", title));
+    main.append(
+      items.length > 0
+        ? el("div", "row-detail", items.join(", "))
+        : el("div", "row-detail kit-none", "Nothing extra"),
+    );
+    row.append(main);
+
+    row.addEventListener("click", () => openDialog(subject, title));
+    return row;
+  }
+
+  function section(label: string, rows: HTMLElement[]): HTMLElement {
+    const wrap = el("section", "section");
+    wrap.append(el("span", "label", label));
+    const list = el("div", "edit-list");
+    rows.forEach((row) => list.append(row));
+    wrap.append(list);
+    return wrap;
+  }
+
+  function render(): void {
+    if (!tt) {
+      app.replaceChildren(
+        emptyState(
+          "No timetable yet",
+          "Deck builds your bag list from your lessons, so it needs your timetable first.",
+          { href: `${base}edit`, label: "Add my timetable" },
+        ),
+      );
+      return;
+    }
+
+    const colours = subjectColours(tt);
+    const frag = document.createDocumentFragment();
+
+    const head = el("div", "page-head");
+    head.append(el("h2", undefined, "Bag list"));
+    frag.append(head);
+    frag.append(
+      el(
+        "p",
+        "note kit-intro",
+        "Tell Deck what each subject needs. Today shows the day's kit in the morning, then switches to the next school day once school is over, which is when you actually pack.",
+      ),
+    );
+
+    frag.append(section("Every day", [kitRow("Every school day", null)]));
+    frag.append(
+      section(
+        "By subject",
+        subjectsInOrder(tt).map((subject) =>
+          kitRow(subject, subject, colours.get(subject)),
+        ),
+      ),
+    );
+
+    app.replaceChildren(frag);
+  }
+
+  function openDialog(subject: string | null, title: string): void {
+    editing = { subject };
+    heading.textContent = title;
+    itemsInput.value = itemsOf(subject).join("\n");
+    // Escape keeps the previous returnValue, so clear it or a stale "save" could fire.
+    dialog.returnValue = "";
+    dialog.showModal();
+  }
+
+  dialog.addEventListener("close", () => {
+    const target = editing;
+    editing = null;
+    if (!target || dialog.returnValue !== "save") return;
+
+    const items = itemsInput.value.split("\n");
+    const next =
+      target.subject === null
+        ? { ...kit, everyDay: items }
+        : { ...kit, bySubject: { ...kit.bySubject, [target.subject]: items } };
+
+    // parseKit trims each line, drops blanks and duplicates, and removes a subject
+    // whose list ends up empty — the same cleaning the loader does.
+    kit = parseKit(next);
+    saveKit(kit);
+    render();
+    flash("Saved");
+  });
+
+  render();
+</script>

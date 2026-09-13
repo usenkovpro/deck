@@ -48,6 +48,8 @@ src/pages/edit.astro     Tap-to-edit builder: lessons and period times
 src/pages/setup.astro    Summary, import / export, delete
 src/pages/homework.astro Homework list, add / edit / tick off
 src/lib/homework.ts      Due-date maths, grouping, next lesson of a subject
+src/pages/kit.astro      Bag list: what each subject needs you to bring
+src/lib/kit.ts           Today's bag, and which day to pack for
 src/lib/edit.ts          Timetable mutations — each returns a new timetable
 src/styles/global.css    All custom properties live here
 src/styles/components.css  Shared component styles (global, because rows are built in JS)
@@ -77,6 +79,8 @@ there.
     *(done)*
 2. **Homework**: add homework against a subject with a due date, sorted by
    soonest. The due date defaults to the next lesson of that subject. *(done)*
+2b. **Bag list**: what each subject needs you to bring. Today lists the day's kit,
+    and switches to the next school day once school is over. *(done)*
 3. **Install on the phone** — PWA, offline, home screen icon. *(mostly done — see below)*
 4. **Revision** — flashcards with spaced repetition.
 5. Whatever the daily use suggests by then.
