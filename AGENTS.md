@@ -50,6 +50,9 @@ src/pages/homework.astro Homework list, add / edit / tick off
 src/lib/homework.ts      Due-date maths, grouping, next lesson of a subject
 src/pages/kit.astro      Bag list: what each subject needs you to bring
 src/lib/kit.ts           Today's bag, and which day to pack for
+src/pages/dates.astro    Countdowns to exams and holidays
+src/lib/dates.ts         Local-date maths and countdown labels, shared by all of the above
+src/lib/id.ts            Ids for things the user creates
 src/lib/edit.ts          Timetable mutations — each returns a new timetable
 src/styles/global.css    All custom properties live here
 src/styles/components.css  Shared component styles (global, because rows are built in JS)
@@ -81,6 +84,8 @@ there.
    soonest. The due date defaults to the next lesson of that subject. *(done)*
 2b. **Bag list**: what each subject needs you to bring. Today lists the day's kit,
     and switches to the next school day once school is over. *(done)*
+2c. **Countdowns**: exams and holidays, with the nearest one shown on Today.
+    *(done)*
 3. **Install on the phone** — PWA, offline, home screen icon. *(mostly done — see below)*
 4. **Revision** — flashcards with spaced repetition.
 5. Whatever the daily use suggests by then.

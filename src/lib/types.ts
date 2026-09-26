@@ -77,3 +77,11 @@ export interface Kit {
   everyDay: string[];
   bySubject: Record<string, string[]>;
 }
+
+/** Something to count down to: an exam, half term, the end of term. */
+export interface CountdownEvent {
+  id: string;
+  title: string;
+  /** "YYYY-MM-DD", a local date. */
+  date: string;
+}

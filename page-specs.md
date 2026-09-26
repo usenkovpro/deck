@@ -63,6 +63,23 @@ unreadable, which is exactly why the paper timetable is annoying.
 
 ---
 
+## `/dates` — Countdowns
+
+Exams, half term, the end of term. Reached from Setup and from the line on Today.
+
+- **Coming up**, soonest first, then **Gone** for dates that have passed, with a
+  "Clear past" button. Anything today still counts as coming up.
+- Each row: what it is, the full date, and "in 9 days" on the right. Within a week
+  that is in `--accent`; past dates are in `--text-3`.
+- One dialog to add or edit: what it is, and when.
+
+**On Today:** one line under the bag card showing **only the next one** —
+"HALF TERM · in 9 days" — linking to the page. A list of every date is what the page
+is for; this line has to be readable at a glance. Nothing shows when there is
+nothing ahead.
+
+**Storage:** `deck.dates.v1`. A malformed entry is dropped and the rest survive.
+
 ## `/kit` — Bag list
 
 What each subject needs you to bring, set once. Reached from Setup and from the bag

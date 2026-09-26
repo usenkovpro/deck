@@ -54,14 +54,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   import {
     GROUP_LABELS,
     GROUP_ORDER,
-    addDays,
     byDue,
     dueLabel,
     groupOf,
-    isoDate,
-    newId,
     nextLessonOf,
   } from "../lib/homework";
+  import { addDays, isoDate } from "../lib/dates";
+  import { newId } from "../lib/id";
   import type { Homework } from "../lib/types";
 
   const app = document.getElementById("app")!;

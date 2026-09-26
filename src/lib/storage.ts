@@ -7,6 +7,7 @@
 
 import {
   DAY_KEYS,
+  type CountdownEvent,
   type DayKey,
   type Homework,
   type Kit,
@@ -259,4 +260,37 @@ export function loadPacked(date: string): string[] {
 
 export function savePacked(date: string, items: string[]): void {
   localStorage.setItem(PACKED_KEY, JSON.stringify({ date, items }));
+}
+
+// --- Countdowns ------------------------------------------------------------
+
+const DATES_KEY = "deck.dates.v1";
+
+/** Like homework: a malformed entry is dropped and the rest of the list survives. */
+export function parseEvents(input: unknown): CountdownEvent[] {
+  if (!Array.isArray(input)) return [];
+
+  const out: CountdownEvent[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "object" || raw === null) continue;
+    const e = raw as Record<string, unknown>;
+    if (typeof e.id !== "string" || e.id === "") continue;
+    if (typeof e.title !== "string" || e.title.trim() === "") continue;
+    if (typeof e.date !== "string" || !DATE.test(e.date)) continue;
+    out.push({ id: e.id, title: e.title.trim(), date: e.date });
+  }
+  return out;
+}
+
+export function loadEvents(): CountdownEvent[] {
+  try {
+    const text = localStorage.getItem(DATES_KEY);
+    return text ? parseEvents(JSON.parse(text)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveEvents(events: CountdownEvent[]): void {
+  localStorage.setItem(DATES_KEY, JSON.stringify(events));
 }

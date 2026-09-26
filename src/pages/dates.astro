@@ -1,0 +1,211 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="Countdowns — Deck">
+  <div id="app"></div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="date-dialog">
+    <form method="dialog">
+      <h2 id="date-heading">Add a countdown</h2>
+      <label class="field">
+        <span class="label">What is it</span>
+        <input id="date-title" required autocomplete="off" autocapitalize="sentences"
+          placeholder="Half term" />
+      </label>
+      <label class="field">
+        <span class="label">When</span>
+        <input id="date-when" type="date" required />
+      </label>
+      <div class="dialog-actions">
+        <button class="btn" value="save">Save</button>
+        <button class="btn secondary" value="cancel" formnovalidate>Cancel</button>
+      </div>
+      <button class="btn danger dialog-destroy" value="delete" id="date-delete"
+        formnovalidate>Delete</button>
+    </form>
+  </dialog>
+
+  <p class="section note"><a href={base}>Back to today</a></p>
+
+  <noscript>
+    <div class="empty">
+      <h2>JavaScript is off</h2>
+      <p>Deck keeps your dates on your device, so it needs JavaScript to read them.</p>
+    </div>
+  </noscript>
+</BaseLayout>
+
+<script>
+  import { loadEvents, saveEvents } from "../lib/storage";
+  import {
+    addDays,
+    byDate,
+    countdownLabel,
+    daysUntil,
+    fromIsoDate,
+    isoDate,
+  } from "../lib/dates";
+  import { newId } from "../lib/id";
+  import { currentTime } from "../lib/now";
+  import { shortDate } from "../lib/format";
+  import { el } from "../lib/render";
+  import type { CountdownEvent } from "../lib/types";
+
+  const app = document.getElementById("app")!;
+  const toast = document.getElementById("toast")!;
+  const dialog = document.getElementById("date-dialog") as HTMLDialogElement;
+  const heading = document.getElementById("date-heading")!;
+  const titleInput = document.getElementById("date-title") as HTMLInputElement;
+  const whenInput = document.getElementById("date-when") as HTMLInputElement;
+  const deleteButton = document.getElementById("date-delete") as HTMLButtonElement;
+
+  let events: CountdownEvent[] = loadEvents();
+  let editing: CountdownEvent | null = null;
+
+  let toastTimer: number | undefined;
+  function flash(text: string): void {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 1800);
+  }
+
+  function commit(next: CountdownEvent[], message: string): void {
+    events = next;
+    saveEvents(events);
+    render();
+    flash(message);
+  }
+
+  function row(event: CountdownEvent, today: Date): HTMLElement {
+    const days = daysUntil(event.date, today);
+
+    const button = el("button", "row");
+    button.type = "button";
+    button.setAttribute("aria-label", `Edit ${event.title}`);
+
+    const main = el("div", "row-main");
+    main.append(el("div", "row-subject", event.title));
+    main.append(el("div", "row-detail", shortDate(fromIsoDate(event.date))));
+    button.append(main);
+
+    // The nearest ones are the point of the page, so they get the accent colour.
+    const tone = days < 0 ? " count-gone" : days <= 7 ? " count-soon" : "";
+    button.append(el("span", `count-when${tone}`, countdownLabel(days)));
+
+    button.addEventListener("click", () => openDialog(event));
+    return button;
+  }
+
+  function section(label: string, rows: HTMLElement[]): HTMLElement {
+    const wrap = el("section", "section");
+    wrap.append(el("span", "label", `${label} · ${rows.length}`));
+    const list = el("div", "edit-list");
+    rows.forEach((r) => list.append(r));
+    wrap.append(list);
+    return wrap;
+  }
+
+  function render(): void {
+    const today = currentTime();
+    const frag = document.createDocumentFragment();
+
+    const head = el("div", "page-head");
+    head.append(el("h2", undefined, "Countdowns"));
+    const add = el("button", "btn", "Add");
+    add.type = "button";
+    add.addEventListener("click", () => openDialog(null));
+    head.append(add);
+    frag.append(head);
+
+    if (events.length === 0) {
+      const box = el("div", "empty");
+      box.append(el("h2", undefined, "Nothing to count down to"));
+      box.append(
+        el(
+          "p",
+          undefined,
+          "Add half term, the end of term, or an exam, and Today will show how long is left.",
+        ),
+      );
+      frag.append(box);
+      app.replaceChildren(frag);
+      return;
+    }
+
+    const upcoming = events.filter((e) => daysUntil(e.date, today) >= 0).sort(byDate);
+    // Most recently gone first: last week's exam is more interesting than last term's.
+    const past = events.filter((e) => daysUntil(e.date, today) < 0).sort((a, b) => byDate(b, a));
+
+    if (upcoming.length > 0) {
+      frag.append(section("Coming up", upcoming.map((e) => row(e, today))));
+    }
+    if (past.length > 0) {
+      const wrap = section("Gone", past.map((e) => row(e, today)));
+      const clear = el("button", "btn secondary hw-clear", "Clear past");
+      clear.type = "button";
+      clear.addEventListener("click", () =>
+        commit(
+          events.filter((e) => daysUntil(e.date, currentTime()) >= 0),
+          "Cleared",
+        ),
+      );
+      wrap.append(clear);
+      frag.append(wrap);
+    }
+
+    app.replaceChildren(frag);
+  }
+
+  function openDialog(event: CountdownEvent | null): void {
+    editing = event;
+    heading.textContent = event ? "Edit countdown" : "Add a countdown";
+    titleInput.value = event?.title ?? "";
+    whenInput.value = event?.date ?? isoDate(addDays(currentTime(), 1));
+    deleteButton.hidden = event === null;
+    // Escape keeps the previous returnValue, so clear it or a stale action could fire.
+    dialog.returnValue = "";
+    dialog.showModal();
+  }
+
+  dialog.addEventListener("close", () => {
+    const event = editing;
+    editing = null;
+
+    if (dialog.returnValue === "delete" && event) {
+      commit(events.filter((e) => e.id !== event.id), "Deleted");
+      return;
+    }
+    if (dialog.returnValue !== "save") return;
+
+    const title = titleInput.value.trim();
+    const date = whenInput.value;
+    if (!title || !date) return;
+
+    if (event) {
+      commit(
+        events.map((e) => (e.id === event.id ? { ...e, title, date } : e)),
+        "Saved",
+      );
+    } else {
+      commit([...events, { id: newId(), title, date }], "Added");
+    }
+  });
+
+  render();
+
+  // "in 1 day" has to become "Today" overnight without a reload.
+  let renderedDay = isoDate(currentTime());
+  setInterval(() => {
+    const day = isoDate(currentTime());
+    if (day !== renderedDay) {
+      renderedDay = day;
+      render();
+    }
+  }, 60_000);
+</script>

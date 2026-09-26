@@ -473,7 +473,8 @@ button.row:active {
 }
 
 /* The homework line on the Today screen. */
-.hw-summary {
+.hw-summary,
+.countdown-line {
   display: flex;
   align-items: center;
   gap: var(--s-3);
@@ -488,7 +489,8 @@ button.row:active {
   text-decoration: none;
 }
 
-.hw-summary-line {
+.hw-summary-line,
+.countdown-days {
   margin-left: auto;
   font-weight: 600;
   text-align: right;
@@ -748,4 +750,23 @@ details pre {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   font-size: var(--t-xs);
+}
+
+/* --- Countdowns ------------------------------------------------------------ */
+
+.count-when {
+  flex: none;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: right;
+}
+
+/* Anything within a week is the point of the page. */
+.count-soon {
+  color: var(--accent);
+}
+
+.count-gone {
+  color: var(--text-3);
 }

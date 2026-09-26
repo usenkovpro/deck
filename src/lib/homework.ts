@@ -5,38 +5,10 @@
  * touches the DOM or storage.
  */
 
+import { daysUntil, fromIsoDate } from "./dates";
 import { shortDate } from "./format";
 import { dayKeyOf, entriesFor } from "./schedule";
 import type { Homework, Timetable } from "./types";
-
-/**
- * "2026-09-12", in local time. Never `toISOString()`: that is UTC, and Dubai is
- * four hours ahead, so homework added between midnight and 04:00 would land on the
- * day before.
- */
-export function isoDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/** A "YYYY-MM-DD" string as local midnight. `new Date("2026-09-12")` would be UTC. */
-export function fromIsoDate(iso: string): Date {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
-/** Midnight, `days` days after `date`. */
-export function addDays(date: Date, days: number): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
-}
-
-/** Whole days from today to `due`: 0 is today, 1 tomorrow, -1 yesterday. */
-export function daysUntil(due: string, today: Date): number {
-  const midnight = addDays(today, 0);
-  return Math.round((fromIsoDate(due).getTime() - midnight.getTime()) / 86_400_000);
-}
 
 export type Group = "overdue" | "today" | "tomorrow" | "soon" | "later" | "done";
 
@@ -112,12 +84,4 @@ export function nextLessonOf(
     if (entry) return { date, start: entry.slot.start };
   }
   return null;
-}
-
-export function newId(): string {
-  // randomUUID only exists on https and localhost. Deck is served from both, but a
-  // fallback costs one line.
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }

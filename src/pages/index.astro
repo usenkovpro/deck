@@ -25,8 +25,10 @@ const base = import.meta.env.BASE_URL;
     loadKit,
     loadPacked,
     savePacked,
+    loadEvents,
   } from "../lib/storage";
-  import { homeworkSummary, isoDate, addDays } from "../lib/homework";
+  import { homeworkSummary } from "../lib/homework";
+  import { addDays, countdownLabel, daysUntil, isoDate, nextEvent } from "../lib/dates";
   import { bagFor, packingDay } from "../lib/kit";
   import { snapshot, secondsInto } from "../lib/schedule";
   import { currentTime } from "../lib/now";
@@ -322,6 +324,24 @@ const base = import.meta.env.BASE_URL;
     return wrap;
   }
 
+  /**
+   * The nearest exam or holiday. Only the next one: a list of every date is what
+   * the Countdowns page is for, and this line has to stay glanceable.
+   */
+  function countdownLine(): HTMLElement | null {
+    const now = currentTime();
+    const next = nextEvent(loadEvents(), now);
+    if (!next) return null;
+
+    const link = el("a", "countdown-line");
+    link.href = `${base}dates`;
+    link.append(el("span", "label", next.title));
+    link.append(
+      el("span", "countdown-days", countdownLabel(daysUntil(next.date, now))),
+    );
+    return link;
+  }
+
   /** Rebuild now, even though nothing about the period has changed. */
   function repaint(): void {
     lastShape = "";
@@ -339,6 +359,9 @@ const base = import.meta.env.BASE_URL;
 
     const bag = bagCard(tt, snap);
     if (bag) frag.append(bag);
+
+    const countdown = countdownLine();
+    if (countdown) frag.append(countdown);
 
     const next = snap.next;
     if (next) {
