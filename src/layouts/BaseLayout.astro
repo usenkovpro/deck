@@ -17,6 +17,17 @@ const { title, nav = "plain" } = Astro.props;
 // Every internal link goes through BASE_URL so the app keeps working when it is
 // deployed to a subfolder (GitHub Pages) rather than the root of a domain.
 const base = import.meta.env.BASE_URL;
+
+const description = "Your school timetable, on your phone, offline. No account, no internet needed.";
+
+// Absolute URLs, which is what link previews and search engines need. Astro.site is
+// unset in dev, so fall back to the plain path rather than crashing the page.
+const canonical = Astro.site
+  ? new URL(Astro.url.pathname, Astro.site).href
+  : Astro.url.pathname;
+const shareImage = Astro.site
+  ? new URL(`${base}og-image.png`, Astro.site).href
+  : `${base}og-image.png`;
 ---
 
 <html lang="en">
@@ -24,8 +35,22 @@ const base = import.meta.env.BASE_URL;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Your school timetable, on your phone, offline." />
+    <meta name="description" content={description} />
     <title>{title}</title>
+
+    <!-- What a shared link shows in a message, and what a search engine reads. -->
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Deck" />
+    <!-- The app's name, not the page's: a shared link should say what it is,
+         not which tab it was on. -->
+    <meta property="og:title" content="Deck — your school timetable" />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />

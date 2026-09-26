@@ -30,10 +30,13 @@ const ACCENT = [107, 155, 255];
  * launcher likes, and anything outside the middle 80% can be cut off.
  */
 const TARGETS = [
-  { file: "icon-192.png", size: 192, content: 0.45 },
-  { file: "icon-512.png", size: 512, content: 0.45 },
-  { file: "icon-maskable-512.png", size: 512, content: 0.36 },
-  { file: "apple-touch-icon.png", size: 180, content: 0.45 },
+  { file: "icon-192.png", width: 192, height: 192, content: 0.45 },
+  { file: "icon-512.png", width: 512, height: 512, content: 0.45 },
+  { file: "icon-maskable-512.png", width: 512, height: 512, content: 0.36 },
+  { file: "apple-touch-icon.png", width: 180, height: 180, content: 0.45 },
+  // The picture shown when the link is shared. 1200x630 is what the preview
+  // crop expects; anything squarer gets cut off.
+  { file: "og-image.png", width: 1200, height: 630, content: 0.45 },
 ];
 
 /** The letter D, as numbers. All measurements derive from the content radius. */
@@ -86,8 +89,12 @@ function insideD(x, y, d) {
 }
 
 /** Coverage of one pixel by the mark, sampled 4x4 to get smooth edges. */
-function coverage(px, py, size, content) {
-  const d = letterD(size, content);
+function coverage(px, py, width, height, content) {
+  const d = letterD(height, content);
+  // Wide images: keep the letter the size the short edge allows, centred.
+  const shift = (width - height) / 2;
+  d.cx += shift;
+  d.join += shift;
 
   let hits = 0;
   const STEPS = 4;
@@ -103,12 +110,12 @@ function coverage(px, py, size, content) {
   return hits / (STEPS * STEPS);
 }
 
-function drawIcon(size, content) {
-  const rgba = Buffer.alloc(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const a = coverage(x, y, size, content);
-      const i = (y * size + x) * 4;
+function drawIcon(width, height, content) {
+  const rgba = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const a = coverage(x, y, width, height, content);
+      const i = (y * width + x) * 4;
       for (let c = 0; c < 3; c++) {
         rgba[i + c] = Math.round(BG[c] + (ACCENT[c] - BG[c]) * a);
       }
@@ -141,10 +148,10 @@ function chunk(type, data) {
   return Buffer.concat([length, body, crc]);
 }
 
-function encodePNG(size, rgba) {
+function encodePNG(width, height, rgba) {
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; // bit depth
   ihdr[9] = 6; // colour type: RGBA
   // 10, 11, 12 are compression, filter and interlace: all zero, the only values
@@ -152,9 +159,9 @@ function encodePNG(size, rgba) {
 
   // Each scanline is prefixed with its filter type. Zero means "store as is",
   // which costs a few bytes and saves implementing the other four filters.
-  const stride = size * 4;
-  const raw = Buffer.alloc((stride + 1) * size);
-  for (let y = 0; y < size; y++) {
+  const stride = width * 4;
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
     rgba.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
   }
 
@@ -169,8 +176,8 @@ function encodePNG(size, rgba) {
 // --- Go --------------------------------------------------------------------
 
 mkdirSync(OUT, { recursive: true });
-for (const { file, size, content } of TARGETS) {
-  const png = encodePNG(size, drawIcon(size, content));
+for (const { file, width, height, content } of TARGETS) {
+  const png = encodePNG(width, height, drawIcon(width, height, content));
   writeFileSync(join(OUT, file), png);
-  console.log(`${file}  ${size}x${size}  ${(png.length / 1024).toFixed(1)} kB`);
+  console.log(`${file}  ${width}x${height}  ${(png.length / 1024).toFixed(1)} kB`);
 }

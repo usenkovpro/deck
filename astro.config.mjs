@@ -14,9 +14,17 @@ import { defineConfig } from "astro/config";
  * would look broken at exactly the moment offline support is supposed to save it.
  */
 function precacheBuiltAssets() {
+  /** Captured from the resolved config, so the sitemap can build absolute URLs. */
+  let site = "";
+  let base = "/";
+
   return {
     name: "deck-precache",
     hooks: {
+      "astro:config:done": ({ config }) => {
+        site = config.site ?? "";
+        base = config.base ?? "/";
+      },
       "astro:build:done": ({ dir, logger }) => {
         const out = fileURLToPath(dir);
         const swPath = join(out, "sw.js");
@@ -44,6 +52,31 @@ function precacheBuiltAssets() {
 
         writeFileSync(swPath, source);
         logger.info(`precached ${assets.length} built assets (build ${build})`);
+
+        // A sitemap, so a search engine can be told which pages exist. Built from
+        // what actually landed in dist rather than a hand-kept list, which would
+        // quietly go stale every time a page is added.
+        if (site) {
+          const pages = readdirSync(out, { recursive: true })
+            .map(String)
+            .filter((name) => name.endsWith("index.html"))
+            .map((name) => name.slice(0, -"index.html".length).replace(/\\/g, "/"))
+            .sort();
+
+          const today = new Date().toISOString().slice(0, 10);
+          const urls = pages
+            .map((page) => {
+              const loc = new URL(`${base}${page}`, site).href;
+              return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n  </url>`;
+            })
+            .join("\n");
+
+          writeFileSync(
+            join(out, "sitemap.xml"),
+            `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
+          );
+          logger.info(`sitemap with ${pages.length} pages`);
+        }
       },
     },
   };
